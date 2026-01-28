@@ -1,15 +1,3 @@
-{
-  "name": "alerta-licitacao-v2",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "next": "14.2.35",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  }
-}
+/** @type {import('next').NextConfig} */
+const nextConfig = {};
+module.exports = nextConfig;
