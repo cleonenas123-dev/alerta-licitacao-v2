@@ -1,61 +1,102 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 
-export default function ResetSenha() {
-  const [senha, setSenha] = useState("");
-  const [confirmar, setConfirmar] = useState("");
-  const [msg, setMsg] = useState("");
-  const [ok, setOk] = useState(false);
+export default function ResetPage({ searchParams }) {
+  const [stage, setStage] = useState("verifying"); // verifying | form | done
+  const [msg, setMsg] = useState("Validando link...");
+  const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      setOk(!!data?.session);
-      if (!data?.session) setMsg("Abra esta página pelo link enviado ao seu e-mail.");
-    })();
-  }, []);
+    async function run() {
+      const token_hash = searchParams?.token_hash;
+      const type = searchParams?.type;
 
-  async function salvar() {
-    setMsg("");
-    if (senha.length < 6) return setMsg("A senha precisa ter pelo menos 6 caracteres.");
-    if (senha !== confirmar) return setMsg("As senhas não conferem.");
+      if (!token_hash || !type) {
+        setMsg("Link inválido. Solicite um novo e-mail de redefinição.");
+        setStage("done");
+        return;
+      }
 
-    const { error } = await supabase.auth.updateUser({ password: senha });
-    if (error) return setMsg(`Erro: ${error.message}`);
+      const { error } = await supabase.auth.verifyOtp({ token_hash, type });
 
-    setMsg("Senha atualizada! Redirecionando...");
-    setTimeout(() => (window.location.href = "/alertas"), 800);
+      if (error) {
+        setMsg("Não foi possível validar o link. Solicite um novo e-mail.");
+        setStage("done");
+        return;
+      }
+
+      setStage("form");
+      setMsg("");
+    }
+    run();
+  }, [searchParams]);
+
+  async function updatePassword() {
+    if (pass.length < 8) return setMsg("Use uma senha com pelo menos 8 caracteres.");
+    if (pass !== pass2) return setMsg("As senhas não conferem.");
+
+    const { error } = await supabase.auth.updateUser({ password: pass });
+
+    if (error) return setMsg("Não foi possível atualizar. Tente novamente.");
+
+    setStage("done");
+    setMsg("Senha alterada com sucesso! Você pode entrar agora.");
+    setTimeout(() => (window.location.href = "/login"), 900);
   }
 
   return (
-    <div style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ width: "min(520px,100%)", background: "#fff", borderRadius: 18, padding: 18, border: "1px solid #e5e7eb", boxShadow: "0 14px 40px rgba(0,0,0,0.10)" }}>
-        <h2 style={{ marginTop: 0 }}>Criar nova senha</h2>
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16 }}>
+      <div style={{ width: "min(520px, 100%)", background: "#fff", padding: 20, borderRadius: 14, border: "1px solid rgba(0,0,0,.08)" }}>
+        <h2 style={{ marginTop: 0 }}>Redefinir senha</h2>
 
-        {!ok ? (
-          <p>{msg}</p>
-        ) : (
+        {stage === "form" ? (
           <>
-            <label style={{ fontWeight: 900 }}>Nova senha</label>
-            <input style={{ width: "100%", padding: 10, borderRadius: 12, border: "1px solid #e5e7eb", marginTop: 6 }} type="password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+            <label style={{ display: "block", fontWeight: 800, marginBottom: 6 }}>Nova senha</label>
+            <input
+              type={show ? "text" : "password"}
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,.15)" }}
+            />
 
-            <label style={{ fontWeight: 900, marginTop: 12, display: "block" }}>Confirmar</label>
-            <input style={{ width: "100%", padding: 10, borderRadius: 12, border: "1px solid #e5e7eb", marginTop: 6 }} type="password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} />
+            <label style={{ display: "block", fontWeight: 800, marginTop: 12, marginBottom: 6 }}>Confirmar senha</label>
+            <input
+              type={show ? "text" : "password"}
+              value={pass2}
+              onChange={(e) => setPass2(e.target.value)}
+              style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,.15)" }}
+            />
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-              <button style={{ background: "#2563eb", color: "#fff", border: 0, padding: "10px 12px", borderRadius: 12, fontWeight: 900, cursor: "pointer" }} onClick={salvar}>
-                Salvar
+            <div style={{ display: "flex", gap: 10, marginTop: 12, alignItems: "center" }}>
+              <button
+                onClick={() => setShow((v) => !v)}
+                style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(0,0,0,.12)", background: "#fff", fontWeight: 800, cursor: "pointer" }}
+              >
+                {show ? "Ocultar" : "Mostrar"} senha
               </button>
-              <Link href="/login">Voltar</Link>
+
+              <button
+                onClick={updatePassword}
+                style={{ padding: "10px 12px", borderRadius: 12, border: "none", background: "#111827", color: "#fff", fontWeight: 900, cursor: "pointer" }}
+              >
+                Salvar nova senha
+              </button>
             </div>
           </>
+        ) : (
+          <p style={{ marginBottom: 0 }}>{msg}</p>
         )}
 
-        {msg && <div style={{ marginTop: 12, padding: 10, borderRadius: 12, background: "#f9fafb", border: "1px solid #e5e7eb" }}>{msg}</div>}
+        {msg && stage === "form" && (
+          <div style={{ marginTop: 12, padding: 10, borderRadius: 12, background: "#fff1f2", border: "1px solid #fecdd3", color: "#9f1239", fontWeight: 700 }}>
+            {msg}
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }
