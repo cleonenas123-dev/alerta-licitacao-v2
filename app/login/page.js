@@ -564,4 +564,15 @@ inputFlex: { flex: 1, minWidth: 0 },
       },
   secondaryBtnLink: { textDecoration: "none" },
   disabledBtn: { opacity: 0.55, cursor: "not-allowed" },
+  
+  successBox: {
+    background: "#e9fbf0",
+    border: "1px solid #bfead0",
+    borderRadius: 18,
+    padding: 22,
+    textAlign: "center",
+  },
+  thumb: { fontSize: 44, marginBottom: 10 },
+  successTitle: { fontSize: 22, fontWeight: 900, marginBottom: 6, color: "#155d33" },
+  successText: { fontSize: 14, lineHeight: 1.5, color: "#155d33", marginBottom: 16 },
 };
