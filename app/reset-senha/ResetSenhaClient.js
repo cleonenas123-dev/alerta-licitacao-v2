@@ -1,8 +1,10 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+import { useSearchParams, useRouter } from "next/navigation";
 
 function traduzErroAuth(msg) {
   if (!msg) return "Ocorreu um erro. Tente novamente.";
@@ -27,6 +29,7 @@ function traduzErroAuth(msg) {
 
 export default function ResetSenhaClient() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const token_hash = useMemo(() => searchParams.get("token_hash"), [searchParams]);
   const type = useMemo(() => searchParams.get("type"), [searchParams]);
@@ -51,38 +54,91 @@ export default function ResetSenhaClient() {
       setIsErro(false);
       setLoading(true);
 
-      // precisa vir do e-mail: token_hash e type=recovery
-      if (!token_hash || !type) {
-        setIsErro(true);
-        setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
+     // aceita link novo (?code=...) e link antigo (token_hash/type ou hash com access_token)
+try {
+  // 1) Fluxo novo: vem ?code=XXXX
+  const code = searchParams.get("code");
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      setIsError(true);
+      setMsg(traduzErroAuth(error.message));
+      setLoading(false);
+      return;
+    }
+
+setIsError(false);
+setMsg("");
+setVerificado(true);
+setLoading(false);
+return;
+  }
+
+  // 2) Fluxo token_hash + type (se você estiver usando esse template)
+  if (token_hash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash,
+      type,
+    });
+
+    if (error) {
+      setIsError(true);
+      setMsg(traduzErroAuth(error.message));
+      setLoading(false);
+      return;
+    }
+
+    setIsError(false);
+    setMsg("");
+    setVerificado(true);
+    setLoading(false);
+   return;
+
+  }
+
+  // 3) Fluxo antigo: vem no hash #access_token=...&refresh_token=...&type=recovery
+  const hash = typeof window !== "undefined" ? window.location.hash : "";
+  if (hash && hash.includes("access_token=")) {
+    const params = new URLSearchParams(hash.replace("#", ""));
+    const access_token = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+    const hashType = params.get("type"); // geralmente "recovery"
+
+    if (access_token && refresh_token && hashType === "recovery") {
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+
+      if (error) {
+        setIsError(true);
+        setMsg(traduzErroAuth(error.message));
         setLoading(false);
         return;
       }
 
-      try {
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash,
-          type,
-        });
+      // remove o hash (pra não deixar token na URL)
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
 
-        if (error) {
-          setIsErro(true);
-          setMsg(traduzErroAuth(error.message));
-          setLoading(false);
-          return;
-        }
+     setIsError(false);
+     setMsg("");
+     setVerificado(true);
+     setLoading(false);
+     return;
+    }
+  }
 
-        setVerificado(true);
-      } catch (err) {
-        setIsErro(true);
-        setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Se chegou aqui, não veio nada válido
+  setIsError(true);
+  setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
+  setLoading(false);
+  return;
+} catch (e) {
+  setIsError(true);
+  setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
+  setLoading(false);
+  return;
+}
 
-    run();
-  }, [token_hash, type]);
+      run();
+}, [searchParams]);
 
   async function salvarNovaSenha(e) {
     e.preventDefault();
@@ -90,9 +146,11 @@ export default function ResetSenhaClient() {
     setIsErro(false);
 
     if (!verificado) {
-      setIsErro(true);
-      setMsg("Link inválido ou expirado. Solicite uma nova redefinição de senha.");
-      return;
+  setIsError(true);
+  setMsg("Link inválido ou expirado. Volte e solicite uma nova redefinição de senha.");
+  return;
+}
+
     }
 
     if (senha1.length < 6) {
