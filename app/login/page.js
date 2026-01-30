@@ -45,6 +45,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [isErro, setIsErro] = useState(false);
+  const [cadastroOk, setCadastroOk] = useState(false);
+  const [emailCadastro, setEmailCadastro] = useState("");
 
   // cooldown reenviar (serve para “esqueci” e pode servir para “criar” se quiser)
   const [cooldown, setCooldown] = useState(0);
@@ -133,7 +135,10 @@ export default function LoginPage() {
       }
 
       setIsErro(false);
-      setMsg("Conta criada! Se necessário, verifique seu e-mail para confirmar o cadastro.");
+      setMsg("");
+      setEmailCadastro(email.trim());
+      setCadastroOk(true);
+
       setSenha("");
       setConfirmarSenha("");
       setMostrarSenha(false);
