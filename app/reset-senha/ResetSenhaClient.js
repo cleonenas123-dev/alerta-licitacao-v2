@@ -22,8 +22,15 @@ export default function ResetSenhaClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const token_hash = useMemo(() => searchParams.get("token_hash"), [searchParams]);
-  const type = useMemo(() => searchParams.get("type"), [searchParams]);
+ const token_hash = useMemo(
+  () => searchParams.get("token_hash") || searchParams.get("token"),
+  [searchParams]
+);
+
+const type = useMemo(
+  () => searchParams.get("type") || "recovery",
+  [searchParams]
+);
 
   const [verificado, setVerificado] = useState(false);
   const [loading, setLoading] = useState(true);
