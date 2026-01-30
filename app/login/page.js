@@ -55,7 +55,7 @@ export default function LoginPage() {
 if (cadastroOk) {
   return (
     <div style={styles.page}>
-      <div style={tyles.cardNarrow}>
+      <div style={styles.cardNarrow}>
         <div style={styles.header}>
           <div style={styles.title}>Alerta de Licitação</div>
           <div style={styles.subtitle}>Conta criada</div>
