@@ -40,7 +40,15 @@ export default function ResetSenhaClient() {
       setMsg("");
       setIsErro(false);
       setLoading(true);
-
+      
+console.log("RESET DEBUG", {
+  href: typeof window !== "undefined" ? window.location.href : "",
+  search: typeof window !== "undefined" ? window.location.search : "",
+  hash: typeof window !== "undefined" ? window.location.hash : "",
+  code: searchParams.get("code"),
+  token_hash: searchParams.get("token_hash"),
+  type: searchParams.get("type"),
+});
       try {
         const hash = typeof window !== "undefined" ? window.location.hash : "";
 
