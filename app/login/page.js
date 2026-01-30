@@ -48,9 +48,7 @@ export default function LoginPage() {
   const [isErro, setIsErro] = useState(false);
   const [cadastroOk, setCadastroOk] = useState(false);
   const [emailCadastro, setEmailCadastro] = useState("");
-  const [cadastroOk, setCadastroOk] = useState(false);
-  const [emailCadastro, setEmailCadastro] = useState("");
-
+  
   // cooldown reenviar (serve para “esqueci” e pode servir para “criar” se quiser)
   const [cooldown, setCooldown] = useState(0);
   const podeReenviar = useMemo(() => cooldown <= 0, [cooldown]);
