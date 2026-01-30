@@ -1,227 +1,255 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { supabase } from '../../lib/supabaseClient'
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function ResetSenhaPage() {
+  return (
+    <Suspense fallback={<LoadingCard />}>
+      <ResetSenhaInner />
+    </Suspense>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <div style={{ fontWeight: 900, fontSize: 26, marginBottom: 6 }}>Redefinir senha</div>
+        <div style={styles.alertInfo}>Carregando...</div>
+      </div>
+    </div>
+  );
+}
+
+function ResetSenhaInner() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const token_hash = useMemo(() => searchParams.get("token_hash"), [searchParams]);
   const type = useMemo(() => searchParams.get("type"), [searchParams]);
 
-  const [loading, setLoading] = useState(true);
-  const [verificado, setVerificado] = useState(false);
+  const [verificando, setVerificando] = useState(true);
+  const [tokenOk, setTokenOk] = useState(false);
 
   const [senha1, setSenha1] = useState("");
   const [senha2, setSenha2] = useState("");
 
   const [msg, setMsg] = useState("");
-  const [isErro, setIsErro] = useState(false);
+  const [erro, setErro] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  // reenviar (60s)
+  const [email, setEmail] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const origin = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
 
   useEffect(() => {
-    const run = async () => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((s) => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  useEffect(() => {
+    async function run() {
       setMsg("");
-      setIsErro(false);
+      setErro(false);
 
-      // Precisa vir do e-mail
+      // precisa ter token_hash e type=recovery
       if (!token_hash || !type) {
-        setIsErro(true);
-        setMsg("Erro: link inválido ou incompleto. Solicite uma nova redefinição de senha.");
-        setLoading(false);
+        setVerificando(false);
+        setTokenOk(false);
+        setErro(true);
+        setMsg("Link inválido ou incompleto. Solicite um novo link de redefinição.");
         return;
       }
 
-      // Para reset, o type deve ser "recovery"
-      if (type !== "recovery") {
-        setIsErro(true);
-        setMsg("Erro: tipo de link inválido. Solicite a redefinição de senha novamente.");
-        setLoading(false);
-        return;
+      try {
+        const { error } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash,
+        });
+
+        if (error) {
+          setTokenOk(false);
+          setErro(true);
+          setMsg("Link expirado ou inválido. Solicite um novo link.");
+        } else {
+          setTokenOk(true);
+          setErro(false);
+          setMsg("");
+        }
+      } catch (e) {
+        setTokenOk(false);
+        setErro(true);
+        setMsg("Erro ao validar o link. Solicite um novo link.");
+      } finally {
+        setVerificando(false);
       }
-
-      // Verifica o token e cria sessão
-      const { error } = await supabase.auth.verifyOtp({
-        type: "recovery",
-        token_hash,
-      });
-
-      if (error) {
-        setIsErro(true);
-        setMsg("Erro: link expirado ou já utilizado. Clique em 'Esqueci a senha' e gere um novo link.");
-        setLoading(false);
-        return;
-      }
-
-      setVerificado(true);
-      setLoading(false);
-    };
+    }
 
     run();
   }, [token_hash, type]);
 
-  const salvarNovaSenha = async () => {
+  async function salvarNovaSenha(e) {
+    e.preventDefault();
     setMsg("");
-    setIsErro(false);
-
-    if (!senha1 || !senha2) {
-      setIsErro(true);
-      setMsg("Erro: preencha os dois campos de senha.");
-      return;
-    }
+    setErro(false);
 
     if (senha1.length < 6) {
-      setIsErro(true);
-      setMsg("Erro: a senha deve ter no mínimo 6 caracteres.");
+      setErro(true);
+      setMsg("A senha deve ter pelo menos 6 caracteres.");
       return;
     }
-
     if (senha1 !== senha2) {
-      setIsErro(true);
-      setMsg("Erro: as senhas não conferem.");
+      setErro(true);
+      setMsg("As senhas não conferem.");
       return;
     }
 
-    setLoading(true);
+    setSalvando(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: senha1 });
+      if (error) {
+        setErro(true);
+        setMsg("Não foi possível atualizar a senha: " + error.message);
+      } else {
+        setErro(false);
+        setMsg("Senha criada com sucesso!");
+      }
+    } catch (e) {
+      setErro(true);
+      setMsg("Erro inesperado ao atualizar a senha.");
+    } finally {
+      setSalvando(false);
+    }
+  }
 
-    const { error } = await supabase.auth.updateUser({ password: senha1 });
+  async function reenviarLink(e) {
+    e.preventDefault();
+    setMsg("");
+    setErro(false);
 
-    if (error) {
-      setIsErro(true);
-      setMsg("Erro: não foi possível alterar a senha. Tente novamente.");
-      setLoading(false);
+    if (!email.trim()) {
+      setErro(true);
+      setMsg("Digite seu e-mail para reenviar o link.");
       return;
     }
 
-    setIsErro(false);
-    setMsg("Senha criada com sucesso! Você já pode entrar no sistema.");
-    setLoading(false);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${origin}/reset-senha`,
+      });
 
-    // opcional: deslogar sessão de recovery e mandar pro login
-    setTimeout(async () => {
-      await supabase.auth.signOut();
-      router.push("/login");
-    }, 1200);
-  };
+      if (error) {
+        setErro(true);
+        setMsg("Não foi possível reenviar agora. Tente novamente.");
+      } else {
+        setErro(false);
+        setMsg("Pronto! Se o e-mail existir, reenviamos o link (verifique SPAM).");
+        setCooldown(60);
+      }
+    } catch (e) {
+      setErro(true);
+      setMsg("Erro inesperado ao reenviar.");
+    }
+  }
 
   return (
-    <div style={styles.wrap}>
+    <div style={styles.page}>
       <div style={styles.card}>
-        <div style={styles.header}>
-          <div style={styles.title}>Alerta de Licitação</div>
-          <div style={styles.sub}>Redefinição de senha</div>
+        <div style={{ fontWeight: 900, fontSize: 26, marginBottom: 6 }}>Redefinir senha</div>
+        <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 14 }}>
+          Crie uma nova senha para sua conta.
         </div>
 
-        <div style={styles.body}>
-          {loading && <p style={styles.text}>Carregando…</p>}
+        {verificando ? (
+          <div style={styles.alertInfo}>Validando link...</div>
+        ) : (
+          <>
+            {msg && <div style={erro ? styles.alertErr : styles.alertOk}>{msg}</div>}
 
-          {!loading && !verificado && (
-            <>
-              <p style={styles.text}>{msg}</p>
-              <button style={styles.btnDark} onClick={() => router.push("/login")}>
-                Voltar ao login
-              </button>
-            </>
-          )}
+            {tokenOk ? (
+              <form onSubmit={salvarNovaSenha} style={styles.form}>
+                <label style={styles.label}>Nova senha</label>
+                <input style={styles.input} type="password" value={senha1} onChange={(e) => setSenha1(e.target.value)} />
 
-          {!loading && verificado && (
-            <>
-              <h2 style={styles.h2}>Digite sua nova senha</h2>
+                <label style={styles.label}>Confirmar nova senha</label>
+                <input style={styles.input} type="password" value={senha2} onChange={(e) => setSenha2(e.target.value)} />
 
-              <label style={styles.label}>Nova senha</label>
-              <input
-                style={styles.input}
-                type="password"
-                value={senha1}
-                onChange={(e) => setSenha1(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-              />
+                <button style={styles.primaryBtn} type="submit" disabled={salvando}>
+                  {salvando ? "Salvando..." : "Salvar nova senha"}
+                </button>
 
-              <label style={styles.label}>Confirmar nova senha</label>
-              <input
-                style={styles.input}
-                type="password"
-                value={senha2}
-                onChange={(e) => setSenha2(e.target.value)}
-                placeholder="Repita a senha"
-              />
-
-              {msg && (
-                <div style={{ ...styles.msg, ...(isErro ? styles.msgErro : styles.msgOk) }}>
-                  {msg}
+                <button
+                  type="button"
+                  style={styles.secondaryBtn}
+                  onClick={() => (window.location.href = "/")}
+                >
+                  Voltar para Home
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={reenviarLink} style={styles.form}>
+                <div style={styles.help}>
+                  Como o link não é válido/expirou, você pode reenviar um novo.
                 </div>
-              )}
 
-              <div style={styles.row}>
-                <button style={styles.btnGreen} onClick={salvarNovaSenha} disabled={loading}>
-                  Salvar senha
+                <label style={styles.label}>Seu e-mail</label>
+                <input style={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
+
+                <button style={styles.primaryBtn} type="submit" disabled={cooldown > 0}>
+                  {cooldown > 0 ? `Reenviar em ${cooldown}s` : "Reenviar link"}
                 </button>
-                <button style={styles.btnDark} onClick={() => router.push("/")}>
-                  Home
+
+                <button
+                  type="button"
+                  style={styles.secondaryBtn}
+                  onClick={() => (window.location.href = "/login")}
+                >
+                  Voltar para Login
                 </button>
-              </div>
-            </>
-          )}
-        </div>
+              </form>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 const styles = {
-  wrap: {
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    padding: 20,
-    background: "#ffffff",
-  },
+  page: { minHeight: "100vh", display: "grid", placeItems: "center", background: "#fff", padding: 24 },
   card: {
-    width: "min(720px, 92vw)",
-    borderRadius: 18,
-    overflow: "hidden",
-    boxShadow: "0 18px 60px rgba(0,0,0,.12)",
-    border: "1px solid rgba(0,0,0,.06)",
+    width: "min(560px, 92vw)",
+    borderRadius: 20,
+    boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+    padding: 28,
+    background: "#fff",
   },
-  header: {
-    background: "#0b1220",
-    color: "#fff",
-    padding: "18px 22px",
-  },
-  title: { fontSize: 20, fontWeight: 800 },
-  sub: { fontSize: 13, opacity: 0.85, marginTop: 2 },
-  body: { padding: 22 },
-  h2: { margin: "0 0 14px 0", fontSize: 22 },
-  text: { margin: "10px 0" },
-  label: { display: "block", fontWeight: 700, marginTop: 12, marginBottom: 6 },
-  input: {
-    width: "100%",
-    padding: "12px 12px",
-    borderRadius: 10,
-    border: "1px solid rgba(0,0,0,.18)",
-    outline: "none",
-  },
-  row: { display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" },
-  btnGreen: {
-    background: "#16a34a",
-    color: "#fff",
+  form: { display: "grid", gap: 10, marginTop: 12 },
+  label: { fontWeight: 800, fontSize: 13, marginTop: 6 },
+  input: { height: 42, borderRadius: 12, border: "1px solid #d1d5db", padding: "0 12px", fontSize: 14 },
+  help: { fontSize: 12, opacity: 0.75 },
+  primaryBtn: {
+    marginTop: 8,
+    height: 42,
+    borderRadius: 12,
     border: "none",
-    padding: "12px 16px",
-    borderRadius: 10,
-    fontWeight: 800,
+    background: "#111827",
+    color: "#fff",
+    fontWeight: 900,
     cursor: "pointer",
   },
-  btnDark: {
-    background: "#0b1220",
-    color: "#fff",
-    border: "none",
-    padding: "12px 16px",
-    borderRadius: 10,
-    fontWeight: 800,
+  secondaryBtn: {
+    height: 42,
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    fontWeight: 900,
     cursor: "pointer",
   },
-  msg: { marginTop: 14, padding: 12, borderRadius: 12, fontWeight: 700 },
-  msgOk: { background: "#e7f7ed", border: "1px solid #a6e7bf", color: "#0f5132" },
-  msgErro: { background: "#fdecec", border: "1px solid #f3b4b4", color: "#7a1b1b" },
+  alertOk: { background: "#dcfce7", border: "1px solid #86efac", padding: 12, borderRadius: 12, marginTop: 8, fontWeight: 800, color: "#14532d", fontSize: 13 },
+  alertErr: { background: "#fee2e2", border: "1px solid #fecaca", padding: 12, borderRadius: 12, marginTop: 8, fontWeight: 800, color: "#7f1d1d", fontSize: 13 },
+  alertInfo: { background: "#e5e7eb", border: "1px solid #d1d5db", padding: 12, borderRadius: 12, marginTop: 8, fontWeight: 800, color: "#111827", fontSize: 13 },
 };
