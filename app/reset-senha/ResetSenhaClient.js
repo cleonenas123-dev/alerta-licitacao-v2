@@ -6,29 +6,14 @@ import { supabase } from "../../lib/supabaseClient";
 
 function traduzErroAuth(msg) {
   if (!msg) return "Ocorreu um erro. Tente novamente.";
-
   const m = String(msg);
-
-  const mapa = new Map([
-    [
-      "New password should be different from the old password.",
-      "A nova senha precisa ser diferente da senha anterior.",
-    ],
-    ["Password should be at least 6 characters", "A senha deve ter pelo menos 6 caracteres."],
-    ["Invalid or expired link", "Link inválido ou expirado. Solicite uma nova redefinição de senha."],
-    [
-      "For security purposes, you can only request this once every 60 seconds",
-      "Aguarde 60 segundos para reenviar.",
-    ],
-  ]);
-
-  if (mapa.has(m)) return mapa.get(m);
-
   const low = m.toLowerCase();
-  if (low.includes("otp_expired")) return "Esse link expirou. Solicite uma nova redefinição de senha.";
+
+  if (low.includes("otp_expired")) return "Esse link expirou (ou já foi usado). Solicite um novo link.";
   if (low.includes("expired")) return "Link expirado. Solicite uma nova redefinição de senha.";
   if (low.includes("invalid")) return "Link inválido. Solicite uma nova redefinição de senha.";
   if (low.includes("password")) return "Senha inválida. Verifique e tente novamente.";
+  if (low.includes("6 characters")) return "A senha deve ter pelo menos 6 caracteres.";
 
   return "Ocorreu um erro. Tente novamente.";
 }
@@ -42,16 +27,12 @@ export default function ResetSenhaClient() {
 
   const [verificado, setVerificado] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [senha1, setSenha1] = useState("");
   const [senha2, setSenha2] = useState("");
-
   const [mostrar1, setMostrar1] = useState(false);
   const [mostrar2, setMostrar2] = useState(false);
-
   const [msg, setMsg] = useState("");
   const [isErro, setIsErro] = useState(false);
-
   const [sucesso, setSucesso] = useState(false);
 
   useEffect(() => {
@@ -61,24 +42,23 @@ export default function ResetSenhaClient() {
       setLoading(true);
 
       try {
-        // 0) Se veio erro no hash (ex: #error_code=otp_expired)
-        const hash0 = typeof window !== "undefined" ? window.location.hash : "";
-        if (hash0 && hash0.includes("error=")) {
-          const p = new URLSearchParams(hash0.replace("#", ""));
-          const errorCode = p.get("error_code"); // otp_expired, etc.
+        const hash = typeof window !== "undefined" ? window.location.hash : "";
 
+        // erro no hash (ex: otp_expired)
+        if (hash && hash.includes("error=")) {
+          const p = new URLSearchParams(hash.replace("#", ""));
+          const errorCode = p.get("error_code");
           setIsErro(true);
-          if (errorCode === "otp_expired") {
-            setMsg("Esse link de redefinição expirou (ou já foi usado). Solicite um novo link.");
-          } else {
-            setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
-          }
+          setMsg(errorCode === "otp_expired"
+            ? "Esse link expirou (ou já foi usado). Solicite um novo link."
+            : "Não foi possível validar o link. Solicite uma nova redefinição de senha."
+          );
           setVerificado(false);
           setLoading(false);
           return;
         }
 
-        // 1) Fluxo novo: vem ?code=XXXX
+        // 1) ?code=
         const code = searchParams.get("code");
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -89,18 +69,13 @@ export default function ResetSenhaClient() {
             setLoading(false);
             return;
           }
-
-          setIsErro(false);
-          setMsg("");
           setVerificado(true);
           setLoading(false);
-
-          // opcional: limpar o code da URL
           router.replace("/reset-senha");
           return;
         }
 
-        // 2) Fluxo token_hash + type (template)
+        // 2) token_hash + type
         if (token_hash && type) {
           const { error } = await supabase.auth.verifyOtp({ token_hash, type });
           if (error) {
@@ -110,25 +85,20 @@ export default function ResetSenhaClient() {
             setLoading(false);
             return;
           }
-
-          setIsErro(false);
-          setMsg("");
           setVerificado(true);
           setLoading(false);
           return;
         }
 
-        // 3) Fluxo antigo: hash #access_token=...&refresh_token=...&type=recovery
-        const hash = typeof window !== "undefined" ? window.location.hash : "";
+        // 3) #access_token=
         if (hash && hash.includes("access_token=")) {
-          const params = new URLSearchParams(hash.replace("#", ""));
-          const access_token = params.get("access_token");
-          const refresh_token = params.get("refresh_token");
-          const hashType = params.get("type"); // "recovery"
+          const p = new URLSearchParams(hash.replace("#", ""));
+          const access_token = p.get("access_token");
+          const refresh_token = p.get("refresh_token");
+          const hashType = p.get("type");
 
           if (access_token && refresh_token && hashType === "recovery") {
             const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-
             if (error) {
               setIsErro(true);
               setMsg(traduzErroAuth(error.message));
@@ -136,19 +106,13 @@ export default function ResetSenhaClient() {
               setLoading(false);
               return;
             }
-
-            // remove o hash (pra não deixar token na URL)
             window.history.replaceState(null, "", window.location.pathname + window.location.search);
-
-            setIsErro(false);
-            setMsg("");
             setVerificado(true);
             setLoading(false);
             return;
           }
         }
 
-        // Se chegou aqui, não veio nada válido
         setIsErro(true);
         setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
         setVerificado(false);
@@ -190,13 +154,11 @@ export default function ResetSenhaClient() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: senha1 });
-
       if (error) {
         setIsErro(true);
         setMsg(traduzErroAuth(error.message));
         return;
       }
-
       setSucesso(true);
       setSenha1("");
       setSenha2("");
@@ -299,11 +261,7 @@ export default function ResetSenhaClient() {
             </a>
 
             {!verificado && !loading ? (
-              <button
-                type="button"
-                style={{ ...styles.secondaryBtn, minWidth: 220 }}
-                onClick={() => router.push("/login")}
-              >
+              <button type="button" style={styles.secondaryBtn} onClick={() => router.push("/login")}>
                 Solicitar novo link
               </button>
             ) : null}
