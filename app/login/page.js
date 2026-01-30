@@ -52,40 +52,6 @@ export default function LoginPage() {
   // cooldown reenviar (serve para “esqueci” e pode servir para “criar” se quiser)
   const [cooldown, setCooldown] = useState(0);
   const podeReenviar = useMemo(() => cooldown <= 0, [cooldown]);
-if (cadastroOk) {
-  return (
-    <div style={styles.page}>
-      <div style={styles.cardNarrow}>
-        <div style={styles.header}>
-          <div style={styles.title}>Alerta de Licitação</div>
-          <div style={styles.subtitle}>Conta criada</div>
-        </div>
-
-        <div style={{ padding: 22 }}>
-          <div style={styles.successBox}>
-            <div style={styles.thumb}>👍</div>
-            <div style={styles.successTitle}>Conta criada com sucesso!</div>
-            <div style={styles.successText}>
-              Enviamos um link de confirmação para <b>{emailCadastro}</b>.
-              <br />
-              Clique no link do e-mail para confirmar e fazer o primeiro acesso.
-            </div>
-
-            <button
-              style={styles.primaryBtn}
-              onClick={() => {
-                setCadastroOk(false);
-                setTab("entrar");
-              }}
-            >
-              Voltar para o login
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
   
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -255,8 +221,39 @@ if (cadastroOk) {
     }
   }
 
-  return (
-    <div style={styles.page}>
+ return (
+  <div style={styles.page}>
+    {cadastroOk ? (
+      <div style={styles.cardNarrow}>
+        <div style={styles.header}>
+          <div style={styles.title}>Alerta de Licitação</div>
+          <div style={styles.subtitle}>Conta criada</div>
+        </div>
+
+        <div style={{ padding: 22 }}>
+          <div style={styles.successBox}>
+            <div style={styles.thumb}>👍</div>
+            <div style={styles.successTitle}>Conta criada com sucesso!</div>
+            <div style={styles.successText}>
+              Enviamos um link de confirmação para <b>{emailCadastro}</b>.
+              <br />
+              Clique no link do e-mail para confirmar e fazer o primeiro acesso.
+            </div>
+
+            <button
+              type="button"
+              style={styles.primaryBtn}
+              onClick={() => {
+                setCadastroOk(false);
+                setTab("entrar");
+              }}
+            >
+              Voltar para o login
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : (
       <div style={styles.card}>
         <div style={styles.header}>
           <div style={styles.brandRow}>
@@ -435,6 +432,7 @@ if (cadastroOk) {
           </form>
         )}
       </div>
+     )}
     </div>
   );
 }
