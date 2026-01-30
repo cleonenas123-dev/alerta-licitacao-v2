@@ -1,10 +1,8 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { supabase } from "../../lib/supabaseClient";
 import { useSearchParams, useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabaseClient";
 
 function traduzErroAuth(msg) {
   if (!msg) return "Ocorreu um erro. Tente novamente.";
@@ -12,17 +10,25 @@ function traduzErroAuth(msg) {
   const m = String(msg);
 
   const mapa = new Map([
-    ["New password should be different from the old password.", "A nova senha precisa ser diferente da senha anterior."],
+    [
+      "New password should be different from the old password.",
+      "A nova senha precisa ser diferente da senha anterior.",
+    ],
     ["Password should be at least 6 characters", "A senha deve ter pelo menos 6 caracteres."],
     ["Invalid or expired link", "Link inválido ou expirado. Solicite uma nova redefinição de senha."],
-    ["For security purposes, you can only request this once every 60 seconds", "Aguarde 60 segundos para reenviar."],
+    [
+      "For security purposes, you can only request this once every 60 seconds",
+      "Aguarde 60 segundos para reenviar.",
+    ],
   ]);
 
   if (mapa.has(m)) return mapa.get(m);
 
-  if (m.toLowerCase().includes("expired")) return "Link expirado. Solicite uma nova redefinição de senha.";
-  if (m.toLowerCase().includes("invalid")) return "Link inválido. Solicite uma nova redefinição de senha.";
-  if (m.toLowerCase().includes("password")) return "Senha inválida. Verifique e tente novamente.";
+  const low = m.toLowerCase();
+  if (low.includes("otp_expired")) return "Esse link expirou. Solicite uma nova redefinição de senha.";
+  if (low.includes("expired")) return "Link expirado. Solicite uma nova redefinição de senha.";
+  if (low.includes("invalid")) return "Link inválido. Solicite uma nova redefinição de senha.";
+  if (low.includes("password")) return "Senha inválida. Verifique e tente novamente.";
 
   return "Ocorreu um erro. Tente novamente.";
 }
@@ -54,97 +60,109 @@ export default function ResetSenhaClient() {
       setIsErro(false);
       setLoading(true);
 
-     // aceita link novo (?code=...) e link antigo (token_hash/type ou hash com access_token)
-try {
-  // 1) Fluxo novo: vem ?code=XXXX
-  const code = searchParams.get("code");
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      setIsError(true);
-      setMsg(traduzErroAuth(error.message));
-      setLoading(false);
-      return;
-    }
+      try {
+        // 0) Se veio erro no hash (ex: #error_code=otp_expired)
+        const hash0 = typeof window !== "undefined" ? window.location.hash : "";
+        if (hash0 && hash0.includes("error=")) {
+          const p = new URLSearchParams(hash0.replace("#", ""));
+          const errorCode = p.get("error_code"); // otp_expired, etc.
 
-setIsError(false);
-setMsg("");
-setVerificado(true);
-setLoading(false);
-return;
-  }
+          setIsErro(true);
+          if (errorCode === "otp_expired") {
+            setMsg("Esse link de redefinição expirou (ou já foi usado). Solicite um novo link.");
+          } else {
+            setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
+          }
+          setVerificado(false);
+          setLoading(false);
+          return;
+        }
 
-  // 2) Fluxo token_hash + type (se você estiver usando esse template)
-  if (token_hash && type) {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash,
-      type,
-    });
+        // 1) Fluxo novo: vem ?code=XXXX
+        const code = searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            setIsErro(true);
+            setMsg(traduzErroAuth(error.message));
+            setVerificado(false);
+            setLoading(false);
+            return;
+          }
 
-    if (error) {
-      setIsError(true);
-      setMsg(traduzErroAuth(error.message));
-      setLoading(false);
-      return;
-    }
+          setIsErro(false);
+          setMsg("");
+          setVerificado(true);
+          setLoading(false);
 
-    setIsError(false);
-    setMsg("");
-    setVerificado(true);
-    setLoading(false);
-   return;
+          // opcional: limpar o code da URL
+          router.replace("/reset-senha");
+          return;
+        }
 
-  }
+        // 2) Fluxo token_hash + type (template)
+        if (token_hash && type) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+          if (error) {
+            setIsErro(true);
+            setMsg(traduzErroAuth(error.message));
+            setVerificado(false);
+            setLoading(false);
+            return;
+          }
 
-  // 3) Fluxo antigo: vem no hash #access_token=...&refresh_token=...&type=recovery
-  const hash = typeof window !== "undefined" ? window.location.hash : "";
-  if (hash && hash.includes("access_token=")) {
-    const params = new URLSearchParams(hash.replace("#", ""));
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
-    const hashType = params.get("type"); // geralmente "recovery"
+          setIsErro(false);
+          setMsg("");
+          setVerificado(true);
+          setLoading(false);
+          return;
+        }
 
-    if (access_token && refresh_token && hashType === "recovery") {
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        // 3) Fluxo antigo: hash #access_token=...&refresh_token=...&type=recovery
+        const hash = typeof window !== "undefined" ? window.location.hash : "";
+        if (hash && hash.includes("access_token=")) {
+          const params = new URLSearchParams(hash.replace("#", ""));
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
+          const hashType = params.get("type"); // "recovery"
 
-      if (error) {
-        setIsError(true);
-        setMsg(traduzErroAuth(error.message));
+          if (access_token && refresh_token && hashType === "recovery") {
+            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+
+            if (error) {
+              setIsErro(true);
+              setMsg(traduzErroAuth(error.message));
+              setVerificado(false);
+              setLoading(false);
+              return;
+            }
+
+            // remove o hash (pra não deixar token na URL)
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
+
+            setIsErro(false);
+            setMsg("");
+            setVerificado(true);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Se chegou aqui, não veio nada válido
+        setIsErro(true);
+        setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
+        setVerificado(false);
         setLoading(false);
-        return;
+      } catch (e) {
+        setIsErro(true);
+        setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
+        setVerificado(false);
+        setLoading(false);
       }
+    };
 
-      // remove o hash (pra não deixar token na URL)
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-
-     setIsError(false);
-     setMsg("");
-     setVerificado(true);
-     setLoading(false);
-     return;
-    }
-  }
-
-  // Se chegou aqui, não veio nada válido
-  setIsError(true);
-  setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
-  setLoading(false);
-  return;
-} catch (e) {
-  setIsError(true);
-  setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
-  setLoading(false);
-  return;
-}
-
-  setIsError(true);
-  setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
-  setLoading(false);
-  return;
-}
-
-      run();
-}, [searchParams]);
+    run();
+  }, [searchParams, token_hash, type, router]);
 
   async function salvarNovaSenha(e) {
     e.preventDefault();
@@ -152,11 +170,9 @@ return;
     setIsErro(false);
 
     if (!verificado) {
-  setIsError(true);
-  setMsg("Link inválido ou expirado. Volte e solicite uma nova redefinição de senha.");
-  return;
-}
-
+      setIsErro(true);
+      setMsg("Link inválido ou expirado. Volte e solicite uma nova redefinição de senha.");
+      return;
     }
 
     if (senha1.length < 6) {
@@ -225,9 +241,7 @@ return;
         </div>
 
         {msg ? (
-          <div style={{ ...styles.alert, ...(isErro ? styles.alertErro : styles.alertOk) }}>
-            {msg}
-          </div>
+          <div style={{ ...styles.alert, ...(isErro ? styles.alertErro : styles.alertOk) }}>{msg}</div>
         ) : null}
 
         <form onSubmit={salvarNovaSenha} style={{ padding: 22 }}>
@@ -283,6 +297,16 @@ return;
             <a href="/" style={styles.secondaryBtnLink}>
               <span style={styles.secondaryBtn}>Home</span>
             </a>
+
+            {!verificado && !loading ? (
+              <button
+                type="button"
+                style={{ ...styles.secondaryBtn, minWidth: 220 }}
+                onClick={() => router.push("/login")}
+              >
+                Solicitar novo link
+              </button>
+            ) : null}
           </div>
 
           {!verificado && !loading ? (
@@ -338,9 +362,10 @@ const styles = {
     border: "1px solid #d7ddea",
     outline: "none",
     fontSize: 16,
+    minWidth: 0,
   },
-  row: { display: "flex", gap: 10, alignItems: "center" },
-  inputFlex: { flex: 1 },
+  row: { display: "flex", gap: 10, alignItems: "center", minWidth: 0 },
+  inputFlex: { flex: 1, minWidth: 0 },
 
   smallBtn: {
     padding: "14px 16px",
@@ -350,6 +375,7 @@ const styles = {
     fontWeight: 900,
     cursor: "pointer",
     minWidth: 110,
+    flexShrink: 0,
   },
 
   actions: { display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap" },
