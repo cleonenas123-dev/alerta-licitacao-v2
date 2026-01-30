@@ -26,6 +26,7 @@ function traduzErroAuth(msg) {
   if (m.toLowerCase().includes("password")) return "Senha inválida. Verifique e tente novamente.";
   if (m.toLowerCase().includes("email")) return "Verifique o e-mail informado e tente novamente.";
 
+  
   return "Ocorreu um erro. Tente novamente.";
 }
 
@@ -47,12 +48,47 @@ export default function LoginPage() {
   const [isErro, setIsErro] = useState(false);
   const [cadastroOk, setCadastroOk] = useState(false);
   const [emailCadastro, setEmailCadastro] = useState("");
+  const [cadastroOk, setCadastroOk] = useState(false);
+  const [emailCadastro, setEmailCadastro] = useState("");
 
   // cooldown reenviar (serve para “esqueci” e pode servir para “criar” se quiser)
   const [cooldown, setCooldown] = useState(0);
-
   const podeReenviar = useMemo(() => cooldown <= 0, [cooldown]);
+if (cadastroOk) {
+  return (
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <div style={styles.header}>
+          <div style={styles.title}>Alerta de Licitação</div>
+          <div style={styles.subtitle}>Conta criada</div>
+        </div>
 
+        <div style={{ padding: 22 }}>
+          <div style={styles.successBox}>
+            <div style={styles.thumb}>👍</div>
+            <div style={styles.successTitle}>Conta criada com sucesso!</div>
+            <div style={styles.successText}>
+              Enviamos um link de confirmação para <b>{emailCadastro}</b>.
+              <br />
+              Clique no link do e-mail para confirmar e fazer o primeiro acesso.
+            </div>
+
+            <button
+              style={styles.primaryBtn}
+              onClick={() => {
+                setCadastroOk(false);
+                setTab("entrar");
+              }}
+            >
+              Voltar para o login
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+  
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
