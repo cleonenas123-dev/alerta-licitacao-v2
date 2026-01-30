@@ -161,7 +161,7 @@ export default function LoginPage() {
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
-        redirectTo: `${window.location.origin}/reset-senha`,
+       redirectTo: `https://alertadelicitacao.com/reset-senha`,
       });
 
       if (error) {
