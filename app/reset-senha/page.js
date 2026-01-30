@@ -4,12 +4,25 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
+function parseHashParams() {
+  if (typeof window === "undefined") return {};
+  const hash = window.location.hash?.startsWith("#")
+    ? window.location.hash.slice(1)
+    : "";
+  const params = new URLSearchParams(hash);
+  const access_token = params.get("access_token");
+  const refresh_token = params.get("refresh_token");
+  const type = params.get("type");
+  return { access_token, refresh_token, type };
+}
+
 function ResetSenhaInner() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const token_hash = useMemo(() => searchParams.get("token_hash"), [searchParams]);
-  const type = useMemo(() => searchParams.get("type"), [searchParams]);
+  const typeQP = useMemo(() => searchParams.get("type"), [searchParams]);
+  const code = useMemo(() => searchParams.get("code"), [searchParams]); // caso venha via PKCE
 
   const [loading, setLoading] = useState(true);
   const [verificado, setVerificado] = useState(false);
@@ -26,42 +39,72 @@ function ResetSenhaInner() {
 
   useEffect(() => {
     const run = async () => {
+      setLoading(true);
       setMsg("");
       setIsErro(false);
-
-      // O link precisa vir com token_hash e type=recovery
-      if (!token_hash || !type) {
-        setIsErro(true);
-        setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
-        setLoading(false);
-        return;
-      }
+      setVerificado(false);
 
       try {
-        // Confirma o OTP do recovery e cria sessão
-        const { error } = await supabase.auth.verifyOtp({
-          type: "recovery",
-          token_hash,
-        });
-
-        if (error) {
-          setIsErro(true);
-          setMsg("Link inválido, expirado ou já utilizado. Solicite um novo link.");
-          setVerificado(false);
-        } else {
-          setVerificado(true);
+        // 1) FORMATO MAIS COMUM: vem no HASH (#access_token=...&refresh_token=...&type=recovery)
+        const { access_token, refresh_token, type } = parseHashParams();
+        if (access_token && refresh_token && type === "recovery") {
+          const { error } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+          if (error) {
+            setIsErro(true);
+            setMsg("Link inválido, expirado ou já utilizado. Solicite um novo link.");
+          } else {
+            setVerificado(true);
+          }
+          setLoading(false);
+          return;
         }
+
+        // 2) FORMATO token_hash em query (?token_hash=...&type=recovery)
+        if (token_hash && (typeQP === "recovery" || typeQP === "magiclink" || typeQP)) {
+          const { error } = await supabase.auth.verifyOtp({
+            type: "recovery",
+            token_hash,
+          });
+
+          if (error) {
+            setIsErro(true);
+            setMsg("Link inválido, expirado ou já utilizado. Solicite um novo link.");
+          } else {
+            setVerificado(true);
+          }
+          setLoading(false);
+          return;
+        }
+
+        // 3) ALGUNS PROJETOS: vem com ?code=... (PKCE)
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            setIsErro(true);
+            setMsg("Não foi possível validar o link. Solicite um novo link.");
+          } else {
+            setVerificado(true);
+          }
+          setLoading(false);
+          return;
+        }
+
+        // 4) Se chegou aqui, não veio nada útil
+        setIsErro(true);
+        setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
       } catch (e) {
         setIsErro(true);
-        setMsg("Não foi possível validar o link. Tente novamente.");
-        setVerificado(false);
+        setMsg("Erro ao validar o link. Solicite um novo link.");
       } finally {
         setLoading(false);
       }
     };
 
     run();
-  }, [token_hash, type]);
+  }, [token_hash, typeQP, code]);
 
   const onSalvar = async () => {
     setMsg("");
@@ -94,9 +137,7 @@ function ResetSenhaInner() {
         return;
       }
 
-      // Opcional (recomendado): encerra a sessão de recovery
       await supabase.auth.signOut();
-
       router.replace("/reset-senha/sucesso");
     } catch (e) {
       setIsErro(true);
@@ -193,7 +234,6 @@ function ResetSenhaInner() {
 }
 
 export default function ResetSenhaPage() {
-  // Obrigatório no App Router quando usa useSearchParams
   return (
     <Suspense fallback={<div style={{ padding: 24 }}>Carregando…</div>}>
       <ResetSenhaInner />
