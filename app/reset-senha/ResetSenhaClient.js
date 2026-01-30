@@ -312,6 +312,7 @@ const styles = {
     border: "1px solid #d7ddea",
     outline: "none",
     fontSize: 16,
+    boxSizing: "border-box",
     minWidth: 0,
   },
   row: { display: "flex", gap: 10, alignItems: "center", minWidth: 0 },
@@ -328,7 +329,7 @@ const styles = {
     flexShrink: 0,
   },
 
-  actions: { display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap" },
+  actions: { display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap", alignItems: "center" },
   primaryBtn: {
     background: "#0b1020",
     color: "#fff",
