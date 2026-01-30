@@ -25,7 +25,7 @@ function traduzErroAuth(msg) {
   return "Ocorreu um erro. Tente novamente.";
 }
 
-export default function ResetSenhaPage() {
+export default function ResetSenhaClient() {
   const searchParams = useSearchParams();
 
   const token_hash = useMemo(() => searchParams.get("token_hash"), [searchParams]);
