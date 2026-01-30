@@ -155,14 +155,13 @@ if (cadastroOk) {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: senha,
-        options: {
-          // após confirmar e-mail (se você usar), direciona pro login
-          emailRedirectTo: `${window.location.origin}/login`,
-        },
-      });
+      cconst { error } = await supabase.auth.signUp({
+         email: email.trim(),
+         password: senha,
+         options: {
+         emailRedirectTo: `${window.location.origin}/login?tab=entrar`,
+  },
+});
 
       if (error) {
         setIsErro(true);
