@@ -153,7 +153,7 @@ if (cadastroOk) {
     }
 
     try {
-      cconst { error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
          email: email.trim(),
          password: senha,
          options: {
