@@ -579,7 +579,7 @@ inputFlex: { flex: 1, minWidth: 0 },
     padding: 22,
     textAlign: "center",
   },
-  thumb: { fontSize: 44, marginBottom: 10 },
+  thumb: { fontSize: 44, marginBottom: 10, lineHeight: 1},
   successTitle: { fontSize: 22, fontWeight: 900, marginBottom: 6, color: "#155d33" },
   successText: { fontSize: 14, lineHeight: 1.5, color: "#155d33", marginBottom: 16 },
 };
