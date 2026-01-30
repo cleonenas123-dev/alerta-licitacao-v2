@@ -55,7 +55,7 @@ export default function LoginPage() {
 if (cadastroOk) {
   return (
     <div style={styles.page}>
-      <div style={styles.card}>
+      <div style={tyles.cardNarrow}>
         <div style={styles.header}>
           <div style={styles.title}>Alerta de Licitação</div>
           <div style={styles.subtitle}>Conta criada</div>
@@ -455,6 +455,13 @@ const styles = {
     boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
     overflow: "hidden",
   },
+  cardNarrow: {
+    width: "min(720px, 100%)",
+    borderRadius: 22,
+    background: "#fff",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+    overflow: "hidden",
+},
   header: {
     background: "linear-gradient(90deg, #0b1020, #0a0f1d)",
     padding: "22px 22px",
