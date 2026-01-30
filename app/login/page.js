@@ -1,45 +1,41 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
-  const [tab, setTab] = useState("entrar"); // entrar | criar | esqueci
+  const router = useRouter();
 
-  // campos
+  // tabs: entrar | criar | esqueci
+  const [tab, setTab] = useState("entrar");
+
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [senha2, setSenha2] = useState("");
 
-  // mensagens/estado
+  const [msg, setMsg] = useState("");
+  const [isErro, setIsErro] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState(null); // {type:'ok'|'err', text:string}
 
-  // cooldown 60s
+  // Reenvio com contador (60s) no "Esqueci a senha"
   const [cooldown, setCooldown] = useState(0);
-
-  const origin = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return window.location.origin;
-  }, []);
+  const podeReenviar = useMemo(() => cooldown <= 0, [cooldown]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    const t = setInterval(() => setCooldown((c) => c - 1), 1000);
     return () => clearInterval(t);
   }, [cooldown]);
 
-  function startCooldown() {
-    setCooldown(60);
+  function limparMensagens() {
+    setMsg("");
+    setIsErro(false);
   }
 
-  function resetMsgs() {
-    setMsg(null);
-  }
-
-  async function onEntrar(e) {
+  async function handleEntrar(e) {
     e.preventDefault();
-    resetMsgs();
+    limparMensagens();
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -48,241 +44,256 @@ export default function LoginPage() {
       });
       if (error) throw error;
 
-      setMsg({ type: "ok", text: "Login realizado com sucesso!" });
-      // redireciona para alertas
-      window.location.href = "/alertas";
+      router.push("/alertas");
     } catch (err) {
-      setMsg({ type: "err", text: err?.message || "Erro ao entrar." });
+      setIsErro(true);
+      setMsg(err?.message || "Não foi possível entrar.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function onCriarConta(e) {
+  async function handleCriarConta(e) {
     e.preventDefault();
-    resetMsgs();
+    limparMensagens();
 
     if (senha.length < 6) {
-      setMsg({ type: "err", text: "A senha precisa ter pelo menos 6 caracteres." });
+      setIsErro(true);
+      setMsg("A senha precisa ter pelo menos 6 caracteres.");
       return;
     }
     if (senha !== senha2) {
-      setMsg({ type: "err", text: "As senhas não conferem." });
+      setIsErro(true);
+      setMsg("As senhas não conferem.");
       return;
     }
 
     setLoading(true);
     try {
+      const origin = window.location.origin;
+
       const { error } = await supabase.auth.signUp({
         email,
         password: senha,
         options: {
-          // página de confirmação do seu app (você já tem /confirm)
+          // se você usa confirmação de e-mail, ajuste pra sua rota
           emailRedirectTo: `${origin}/confirm`,
         },
       });
+
       if (error) throw error;
 
-      setMsg({
-        type: "ok",
-        text: "Conta criada! Se necessário, confirme seu e-mail para finalizar o acesso.",
-      });
-
-      // cooldown para evitar spam no “reenviar”
-      startCooldown();
+      setIsErro(false);
+      setMsg("Conta criada! Se a confirmação por e-mail estiver ativada, verifique sua caixa de entrada.");
+      setTab("entrar");
+      setSenha("");
+      setSenha2("");
     } catch (err) {
-      setMsg({ type: "err", text: err?.message || "Erro ao criar conta." });
+      setIsErro(true);
+      setMsg(err?.message || "Não foi possível criar a conta.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function enviarResetSenha() {
-    resetMsgs();
+  async function enviarLinkReset(e) {
+    e.preventDefault();
+    limparMensagens();
+
+    if (!email) {
+      setIsErro(true);
+      setMsg("Digite seu e-mail.");
+      return;
+    }
+
     setLoading(true);
     try {
+      const origin = window.location.origin;
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${origin}/reset-senha`,
       });
+
       if (error) throw error;
 
-      setMsg({
-        type: "ok",
-        text: "Pronto! Se o e-mail existir, enviamos um link para redefinir sua senha (verifique SPAM).",
-      });
+      setIsErro(false);
+      // Texto mais “confiável” sem parecer estranho:
+      setMsg("Se este e-mail estiver correto, você receberá o link em instantes. Verifique o SPAM.");
 
-      startCooldown();
+      // inicia contador 60s para reenvio
+      setCooldown(60);
     } catch (err) {
-      setMsg({ type: "err", text: err?.message || "Erro ao enviar e-mail de redefinição." });
+      setIsErro(true);
+      setMsg(err?.message || "Não foi possível enviar o link.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function onEsqueciSenha(e) {
-    e.preventDefault();
-    await enviarResetSenha();
+  async function reenviarEmail() {
+    limparMensagens();
+
+    if (!podeReenviar) return;
+
+    setLoading(true);
+    try {
+      const origin = window.location.origin;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${origin}/reset-senha`,
+      });
+
+      if (error) throw error;
+
+      setIsErro(false);
+      setMsg("Link reenviado. Verifique sua caixa de entrada (e SPAM).");
+      setCooldown(60);
+    } catch (err) {
+      setIsErro(true);
+      setMsg(err?.message || "Não foi possível reenviar o link.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // UI simples (sem depender de libs)
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
-      <div style={{ width: "min(720px, 100%)", background: "#fff", borderRadius: 16, boxShadow: "0 10px 40px rgba(0,0,0,.12)", padding: 24 }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: "#E5E7EB" }} />
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f6f7fb", padding: 16 }}>
+      <div style={{ width: "min(720px, 100%)", background: "#fff", borderRadius: 18, padding: 18, boxShadow: "0 18px 40px rgba(0,0,0,.10)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#e5e7eb" }} />
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>Alerta de Licitação</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>Entrar / Criar conta / Redefinir senha</div>
+            <div style={{ fontWeight: 900, fontSize: 18 }}>Alerta de Licitação</div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Entrar / Criar conta / Redefinir senha</div>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, background: "#F3F4F6", borderRadius: 999, padding: 6, marginBottom: 18 }}>
-          <button onClick={() => { setTab("entrar"); resetMsgs(); }} style={pill(tab === "entrar")}>Entrar</button>
-          <button onClick={() => { setTab("criar"); resetMsgs(); }} style={pill(tab === "criar")}>Criar conta</button>
-          <button onClick={() => { setTab("esqueci"); resetMsgs(); }} style={pill(tab === "esqueci")}>Esqueci a senha</button>
+        <div style={{ background: "#f3f4f6", padding: 8, borderRadius: 999, display: "flex", gap: 8, marginBottom: 14 }}>
+          <button onClick={() => (setTab("entrar"), limparMensagens())}
+            style={pillStyle(tab === "entrar")}>Entrar</button>
+          <button onClick={() => (setTab("criar"), limparMensagens())}
+            style={pillStyle(tab === "criar")}>Criar conta</button>
+          <button onClick={() => (setTab("esqueci"), limparMensagens())}
+            style={pillStyle(tab === "esqueci")}>Esqueci a senha</button>
         </div>
 
-        {msg && (
+        {msg ? (
           <div style={{
-            marginBottom: 12,
-            padding: 12,
             borderRadius: 12,
-            border: "1px solid",
-            borderColor: msg.type === "ok" ? "#86efac" : "#fecaca",
-            background: msg.type === "ok" ? "#ecfdf5" : "#fff1f2",
-            color: msg.type === "ok" ? "#065f46" : "#7f1d1d"
+            padding: "12px 12px",
+            border: `1px solid ${isErro ? "#fecaca" : "#bbf7d0"}`,
+            background: isErro ? "#fef2f2" : "#ecfdf5",
+            color: isErro ? "#991b1b" : "#065f46",
+            marginBottom: 12
           }}>
-            {msg.text}
+            {msg}
           </div>
+        ) : null}
+
+        {tab === "entrar" && (
+          <form onSubmit={handleEntrar}>
+            <label style={labelStyle}>E-mail</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={inputStyle} placeholder="seuemail@dominio.com" />
+
+            <label style={labelStyle}>Senha</label>
+            <input value={senha} onChange={(e) => setSenha(e.target.value)} type="password" style={inputStyle} placeholder="Sua senha" />
+
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <button disabled={loading} style={primaryBtn}>{loading ? "Entrando..." : "Entrar"}</button>
+              <button type="button" onClick={() => router.push("/")} style={secondaryBtn}>Home</button>
+            </div>
+          </form>
         )}
 
-        <form onSubmit={tab === "entrar" ? onEntrar : tab === "criar" ? onCriarConta : onEsqueciSenha}>
-          <label style={label}>E-mail</label>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="seuemail@exemplo.com"
-            type="email"
-            required
-            style={input}
-          />
+        {tab === "criar" && (
+          <form onSubmit={handleCriarConta}>
+            <label style={labelStyle}>E-mail</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={inputStyle} placeholder="seuemail@dominio.com" />
 
-          {tab !== "esqueci" && (
-            <>
-              <label style={label}>Senha</label>
-              <input
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Digite sua senha"
-                type="password"
-                required
-                style={input}
-              />
-            </>
-          )}
+            <label style={labelStyle}>Senha</label>
+            <input value={senha} onChange={(e) => setSenha(e.target.value)} type="password" style={inputStyle} placeholder="Crie uma senha" />
 
-          {tab === "criar" && (
-            <>
-              <label style={label}>Confirmar senha</label>
-              <input
-                value={senha2}
-                onChange={(e) => setSenha2(e.target.value)}
-                placeholder="Repita a senha"
-                type="password"
-                required
-                style={input}
-              />
-            </>
-          )}
+            <label style={labelStyle}>Confirmar senha</label>
+            <input value={senha2} onChange={(e) => setSenha2(e.target.value)} type="password" style={inputStyle} placeholder="Repita a senha" />
 
-          {tab === "esqueci" && (
-            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <button disabled={loading} style={primaryBtn}>{loading ? "Criando..." : "Criar conta"}</button>
+              <button type="button" onClick={() => router.push("/")} style={secondaryBtn}>Home</button>
+            </div>
+          </form>
+        )}
+
+        {tab === "esqueci" && (
+          <form onSubmit={enviarLinkReset}>
+            <label style={labelStyle}>E-mail</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={inputStyle} placeholder="seuemail@dominio.com" />
+
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>
               Digite seu e-mail e enviaremos um link para redefinir sua senha.
             </div>
-          )}
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            {tab === "entrar" && (
-              <button disabled={loading} style={primaryBtn}>
-                {loading ? "Entrando..." : "Entrar"}
+            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+              <button disabled={loading} style={primaryBtn}>{loading ? "Enviando..." : "Enviar link"}</button>
+
+              <button
+                type="button"
+                disabled={loading || !email || !podeReenviar}
+                onClick={reenviarEmail}
+                style={{
+                  ...secondaryBtn,
+                  opacity: (!email || !podeReenviar) ? 0.6 : 1,
+                  cursor: (!email || !podeReenviar) ? "not-allowed" : "pointer",
+                }}
+              >
+                {podeReenviar ? "Reenviar e-mail" : `Reenviar em ${cooldown}s`}
               </button>
-            )}
 
-            {tab === "criar" && (
-              <button disabled={loading} style={primaryBtn}>
-                {loading ? "Criando..." : "Criar conta"}
-              </button>
-            )}
-
-            {tab === "esqueci" && (
-              <>
-                <button disabled={loading} style={primaryBtn}>
-                  {loading ? "Enviando..." : "Enviar link"}
-                </button>
-
-                <button
-                  type="button"
-                  disabled={loading || cooldown > 0}
-                  onClick={enviarResetSenha}
-                  style={{
-                    ...secondaryBtn,
-                    opacity: cooldown > 0 ? 0.6 : 1,
-                    cursor: cooldown > 0 ? "not-allowed" : "pointer",
-                  }}
-                  title={cooldown > 0 ? `Aguarde ${cooldown}s para reenviar` : "Reenviar e-mail"}
-                >
-                  {cooldown > 0 ? `Reenviar em ${cooldown}s` : "Reenviar e-mail"}
-                </button>
-              </>
-            )}
-
-            <button type="button" onClick={() => (window.location.href = "/")} style={secondaryBtn}>
-              Home
-            </button>
-          </div>
-        </form>
+              <button type="button" onClick={() => router.push("/")} style={secondaryBtn}>Home</button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
 }
 
-function pill(active) {
+function pillStyle(active) {
   return {
     flex: 1,
     border: "none",
     borderRadius: 999,
     padding: "10px 12px",
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
-    background: active ? "#fff" : "transparent",
-    boxShadow: active ? "0 2px 10px rgba(0,0,0,.08)" : "none",
+    background: active ? "#111827" : "transparent",
+    color: active ? "#fff" : "#111827",
   };
 }
 
-const label = { display: "block", marginTop: 12, marginBottom: 6, fontWeight: 700, fontSize: 13 };
-const input = {
+const labelStyle = { display: "block", fontSize: 12, fontWeight: 800, marginTop: 10, marginBottom: 6 };
+const inputStyle = {
   width: "100%",
   padding: "12px 12px",
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
+  border: "1px solid #d1d5db",
   outline: "none",
   fontSize: 14,
+  background: "#f9fafb",
 };
 const primaryBtn = {
+  border: "none",
+  borderRadius: 12,
+  padding: "12px 16px",
+  fontWeight: 900,
+  cursor: "pointer",
   background: "#111827",
   color: "#fff",
-  border: "none",
-  padding: "12px 14px",
-  borderRadius: 12,
-  fontWeight: 800,
-  cursor: "pointer",
 };
 const secondaryBtn = {
+  border: "1px solid #d1d5db",
+  borderRadius: 12,
+  padding: "12px 16px",
+  fontWeight: 900,
+  cursor: "pointer",
   background: "#fff",
   color: "#111827",
-  border: "1px solid #D1D5DB",
-  padding: "12px 14px",
-  borderRadius: 12,
-  fontWeight: 800,
-  cursor: "pointer",
 };
