@@ -137,6 +137,12 @@ return;
   return;
 }
 
+  setIsError(true);
+  setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
+  setLoading(false);
+  return;
+}
+
       run();
 }, [searchParams]);
 
