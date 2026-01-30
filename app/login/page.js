@@ -500,7 +500,13 @@ inputFlex: { flex: 1, minWidth: 0 },
     fontWeight: 900,
     cursor: "pointer",
     minWidth: 140,
+
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: 1,
   },
+  
   secondaryBtn: {
     background: "#fff",
     color: "#0b1020",
@@ -511,7 +517,13 @@ inputFlex: { flex: 1, minWidth: 0 },
     cursor: "pointer",
     minWidth: 160,
     textAlign: "center",
-  },
+
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: 1,
+    
+      },
   secondaryBtnLink: { textDecoration: "none" },
   disabledBtn: { opacity: 0.55, cursor: "not-allowed" },
 };
