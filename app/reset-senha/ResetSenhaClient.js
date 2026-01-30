@@ -35,99 +35,83 @@ export default function ResetSenhaClient() {
   const [isErro, setIsErro] = useState(false);
   const [sucesso, setSucesso] = useState(false);
 
-  useEffect(() => {
-    const run = async () => {
-      setMsg("");
-      setIsErro(false);
-      setLoading(true);
-      
-});
-      try {
-        const hash = typeof window !== "undefined" ? window.location.hash : "";
+useEffect(() => {
+  const run = async () => {
+    setMsg("");
+    setIsErro(false);
+    setLoading(true);
 
-        // erro no hash (ex: otp_expired)
-        if (hash && hash.includes("error=")) {
-          const p = new URLSearchParams(hash.replace("#", ""));
-          const errorCode = p.get("error_code");
+    try {
+      // 1) Fluxo novo: ?code=...
+      const code = searchParams.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
           setIsErro(true);
-          setMsg(errorCode === "otp_expired"
-            ? "Esse link expirou (ou já foi usado). Solicite um novo link."
-            : "Não foi possível validar o link. Solicite uma nova redefinição de senha."
-          );
-          setVerificado(false);
+          setMsg(traduzErroAuth(error.message));
           setLoading(false);
           return;
         }
 
-        // 1) ?code=
-        const code = searchParams.get("code");
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            setIsErro(true);
-            setMsg(traduzErroAuth(error.message));
-            setVerificado(false);
-            setLoading(false);
-            return;
-          }
-          setVerificado(true);
-          setLoading(false);
-          router.replace("/reset-senha");
-          return;
-        }
-
-        // 2) token_hash + type
-        if (token_hash && type) {
-          const { error } = await supabase.auth.verifyOtp({ token_hash, type });
-          if (error) {
-            setIsErro(true);
-            setMsg(traduzErroAuth(error.message));
-            setVerificado(false);
-            setLoading(false);
-            return;
-          }
-          setVerificado(true);
-          setLoading(false);
-          return;
-        }
-
-        // 3) #access_token=
-        if (hash && hash.includes("access_token=")) {
-          const p = new URLSearchParams(hash.replace("#", ""));
-          const access_token = p.get("access_token");
-          const refresh_token = p.get("refresh_token");
-          const hashType = p.get("type");
-
-          if (access_token && refresh_token && hashType === "recovery") {
-            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-            if (error) {
-              setIsErro(true);
-              setMsg(traduzErroAuth(error.message));
-              setVerificado(false);
-              setLoading(false);
-              return;
-            }
-            window.history.replaceState(null, "", window.location.pathname + window.location.search);
-            setVerificado(true);
-            setLoading(false);
-            return;
-          }
-        }
-
-        setIsErro(true);
-        setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
-        setVerificado(false);
+        setVerificado(true);
         setLoading(false);
-      } catch (e) {
-        setIsErro(true);
-        setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
-        setVerificado(false);
-        setLoading(false);
+        return;
       }
-    };
 
-    run();
-  }, [searchParams, token_hash, type, router]);
+      // 2) Fluxo token_hash + type (query)
+      if (token_hash && type) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+        if (error) {
+          setIsErro(true);
+          setMsg(traduzErroAuth(error.message));
+          setLoading(false);
+          return;
+        }
+
+        setVerificado(true);
+        setLoading(false);
+        return;
+      }
+
+      // 3) Fluxo antigo: hash #access_token=...&refresh_token=...&type=recovery
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      if (hash && hash.includes("access_token=")) {
+        const params = new URLSearchParams(hash.replace("#", ""));
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
+        const hashType = params.get("type");
+
+        if (access_token && refresh_token && hashType === "recovery") {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) {
+            setIsErro(true);
+            setMsg(traduzErroAuth(error.message));
+            setLoading(false);
+            return;
+          }
+
+          // limpa hash
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+
+          setVerificado(true);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // nada válido
+      setIsErro(true);
+      setMsg("Link inválido ou incompleto. Solicite uma nova redefinição de senha.");
+      setLoading(false);
+    } catch (e) {
+      setIsErro(true);
+      setMsg("Não foi possível validar o link. Solicite uma nova redefinição de senha.");
+      setLoading(false);
+    }
+  };
+
+  run();
+}, [searchParams, token_hash, type]);
 
   async function salvarNovaSenha(e) {
     e.preventDefault();
