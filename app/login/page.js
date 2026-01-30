@@ -460,16 +460,18 @@ const styles = {
 
   form: { padding: 18, paddingTop: 16 },
   label: { display: "block", fontWeight: 800, margin: "12px 0 8px 0" },
-  input: {
-    width: "100%",
-    padding: "14px 14px",
-    borderRadius: 14,
-    border: "1px solid #d7ddea",
-    outline: "none",
-    fontSize: 16,
-  },
-  row: { display: "flex", gap: 10, alignItems: "center" },
-  inputFlex: { flex: 1 },
+ input: {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "14px 14px",
+  borderRadius: 14,
+  border: "1px solid #d7ddea",
+  outline: "none",
+  fontSize: 16,
+  minWidth: 0,
+},
+ row: { display: "flex", gap: 10, alignItems: "center", minWidth: 0 },
+inputFlex: { flex: 1, minWidth: 0 },
 
   smallBtn: {
     padding: "14px 16px",
@@ -482,7 +484,13 @@ const styles = {
   },
   hint: { marginTop: 8, fontSize: 13, opacity: 0.75 },
 
-  actions: { display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap" },
+ actions: {
+  display: "flex",
+  gap: 12,
+  marginTop: 18,
+  flexWrap: "wrap",
+  alignItems: "center",
+},
   primaryBtn: {
     background: "#0b1020",
     color: "#fff",
