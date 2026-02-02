@@ -144,19 +144,40 @@ export default function LoginPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email: emailLimpo,
-        password: senha,
-        options: {
-          // após confirmar e-mail (se você usar), direciona pro login
-          emailRedirectTo: `${window.location.origin}/confirm`,
-        },
-      });
+      const { data, error } = await supabase.auth.signUp({
+  email: emailLimpo,
+  password: senha,
+  options: {
+    emailRedirectTo: `${window.location.origin}/confirm`,
+  },
+});
 
-      if (error) {
-        setIsErro(true);
-        setMsg(traduzErroAuth(error.message));
-        return;
+if (error) {
+  setIsErro(true);
+  setMsg(traduzErroAuth(error.message));
+  return;
+}
+
+// ✅ Caso especial: e-mail já existe
+// Quando o e-mail já está cadastrado, o Supabase pode NÃO retornar erro
+// e mesmo assim não criar um novo usuário. Um jeito simples de detectar:
+// - se não veio user OU
+// - se identities veio vazio
+const user = data?.user;
+const identities = user?.identities;
+
+const jaExiste =
+  !user || (Array.isArray(identities) && identities.length === 0);
+
+if (jaExiste) {
+  setIsErro(true);
+  setMsg("Este e-mail já está cadastrado. Vamos te ajudar a recuperar o acesso.");
+
+  // manda pra aba "esqueci a senha" e já reaproveita o e-mail digitado
+  setTab("esqueci");
+  setLoading(false);
+  return;
+
       }
 
       // sucesso: abre tela “parabéns”
