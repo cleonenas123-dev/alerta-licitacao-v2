@@ -117,159 +117,154 @@ export default function LoginPage() {
   }
 
   async function criarConta(e) {
-    e.preventDefault();
-    setLoading(true);
-    setMsg("");
+  e.preventDefault();
+  setLoading(true);
+  setMsg("");
+  setIsErro(false);
+
+  const emailLimpo = (email || "").trim().toLowerCase();
+
+  // validações
+  if (!emailLimpo) {
+    setIsErro(true);
+    setMsg("Informe seu e-mail.");
+    setLoading(false);
+    return;
+  }
+  if (senha.length < 6) {
+    setIsErro(true);
+    setMsg("A senha deve ter pelo menos 6 caracteres.");
+    setLoading(false);
+    return;
+  }
+  if (senha !== confirmarSenha) {
+    setIsErro(true);
+    setMsg("As senhas não conferem.");
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: emailLimpo,
+      password: senha,
+      options: {
+        emailRedirectTo: `${window.location.origin}/confirm`,
+      },
+    });
+
+    // 1) Se vier erro explícito de "já existe"
+    if (error) {
+      const msgRaw = (error.message || "").toLowerCase();
+      const jaRegistrado =
+        msgRaw.includes("already registered") ||
+        msgRaw.includes("already exists") ||
+        msgRaw.includes("user already") ||
+        msgRaw.includes("email already");
+
+      if (jaRegistrado) {
+        // manda direto pro fluxo de recuperação
+        setIsErro(true);
+        setTab("esqueci");
+
+        const { error: errReset } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
+          redirectTo: `${window.location.origin}/reset-senha`,
+        });
+
+        if (errReset) {
+          setMsg(
+            "Este e-mail já está cadastrado. Não conseguimos enviar o link agora. Clique em “Enviar link” novamente."
+          );
+        } else {
+          setMsg("Este e-mail já está cadastrado. Enviamos um link para você redefinir sua senha.");
+          setCooldown(60);
+        }
+        return;
+      }
+
+      setIsErro(true);
+      setMsg(traduzErroAuth(error.message));
+      return;
+    }
+
+    // 2) Caso "silencioso" de já existir (user vem, identities vazio)
+    const user = data?.user;
+    const identities = user?.identities ?? [];
+    const jaExiste = !!user && Array.isArray(identities) && identities.length === 0;
+
+    if (jaExiste) {
+      setIsErro(true);
+      setTab("esqueci");
+
+      const { error: errReset } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
+        redirectTo: `${window.location.origin}/reset-senha`,
+      });
+
+      if (errReset) {
+        setMsg(
+          "Este e-mail já está cadastrado. Não conseguimos enviar o link agora. Clique em “Enviar link” novamente."
+        );
+      } else {
+        setMsg("Este e-mail já está cadastrado. Enviamos um link para você redefinir sua senha.");
+        setCooldown(60);
+      }
+      return;
+    }
+
+    // 3) Sucesso real: pedir confirmação de e-mail
+    setEmailCadastro(emailLimpo);
+    setCadastroOk(true);
+
     setIsErro(false);
+    setMsg("Conta criada! Enviamos um e-mail de confirmação. Verifique a caixa de entrada e o SPAM.");
 
-    const emailLimpo = email.trim();
-
-    if (!emailLimpo) {
-      setIsErro(true);
-      setMsg("Informe seu e-mail.");
-      setLoading(false);
-      return;
-    }
-    if (senha.length < 6) {
-      setIsErro(true);
-      setMsg("A senha deve ter pelo menos 6 caracteres.");
-      setLoading(false);
-      return;
-    }
-    if (senha !== confirmarSenha) {
-      setIsErro(true);
-      setMsg("As senhas não conferem.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-  email: emailLimpo,
-  password: senha,
-  options: {
-    emailRedirectTo: `${window.location.origin}/confirm`,
-  },
-});
-
-if (error) {
-  setIsErro(true);
-  setMsg(traduzErroAuth(error.message));
-  return;
+    // limpa campos
+    setSenha("");
+    setConfirmarSenha("");
+    setMostrarSenha(false);
+    setMostrarSenha2(false);
+  } catch (err) {
+    setIsErro(true);
+    setMsg("Não foi possível criar a conta. Tente novamente.");
+  } finally {
+    setLoading(false);
+  }
 }
 
-// ✅ Caso especial: e-mail já existe
-// Quando o e-mail já está cadastrado, o Supabase pode NÃO retornar erro
-// e mesmo assim não criar um novo usuário. Um jeito simples de detectar:
-// - se não veio user OU
-// - se identities veio vazio
-const user = data?.user;
-const identities = user?.identities;
+async function enviarReset(e) {
+  e.preventDefault();
+  setLoading(true);
+  setMsg("");
+  setIsErro(false);
 
-const jaExiste =
-  !user || (Array.isArray(identities) && identities.length === 0);
-
-if (jaExiste) {
-  setIsErro(true);
-  setMsg("Este e-mail já está cadastrado. Vamos te ajudar a recuperar o acesso.");
-
-  // manda pra aba "esqueci a senha" e já reaproveita o e-mail digitado
-  setTab("esqueci");
-  setLoading(false);
-  return;
-
-      }
-
-      // sucesso: abre tela “parabéns”
-      setEmailCadastro(emailLimpo);
-      setCadastroOk(true);
-      setMsg("");
-      setIsErro(false);
-
-      // limpa campos
-      setSenha("");
-      setConfirmarSenha("");
-      setMostrarSenha(false);
-      setMostrarSenha2(false);
-    } catch (err) {
+  try {
+    const emailLimpo = (email || "").trim().toLowerCase();
+    if (!emailLimpo) {
       setIsErro(true);
-      setMsg("Não foi possível criar a conta. Tente novamente.");
-    } finally {
-      setLoading(false);
+      setMsg("Informe seu e-mail para receber o link.");
+      return;
     }
-  }
 
-  async function enviarReset(e) {
-    e.preventDefault();
-    setLoading(true);
-    setMsg("");
+    const { error } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
+      redirectTo: `${window.location.origin}/reset-senha`,
+    });
+
+    if (error) {
+      setIsErro(true);
+      setMsg(traduzErroAuth(error.message));
+      return;
+    }
+
     setIsErro(false);
-
-    try {
-      const emailLimpo = email.trim();
-      if (!emailLimpo) {
-        setIsErro(true);
-        setMsg("Informe seu e-mail para receber o link.");
-        return;
-      }
-
-      const { error } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
-        redirectTo: `https://alertadelicitacao.com/reset-senha`,
-      });
-
-      if (error) {
-        setIsErro(true);
-        setMsg(traduzErroAuth(error.message));
-        return;
-      }
-
-      setIsErro(false);
-      setMsg(
-        "Pronto! Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada e o SPAM."
-      );
-      setCooldown(60);
-    } catch (err) {
-      setIsErro(true);
-      setMsg("Não foi possível enviar o e-mail agora. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
+    setMsg("Pronto! Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada e o SPAM.");
+    setCooldown(60);
+  } catch (err) {
+    setIsErro(true);
+    setMsg("Não foi possível enviar o e-mail agora. Tente novamente.");
+  } finally {
+    setLoading(false);
   }
-
-  async function reenviarReset() {
-    if (!podeReenviar) return;
-    setLoading(true);
-    setMsg("");
-    setIsErro(false);
-
-    try {
-      const emailLimpo = email.trim();
-      if (!emailLimpo) {
-        setIsErro(true);
-        setMsg("Informe seu e-mail para reenviar o link.");
-        return;
-      }
-
-      const { error } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
-        redirectTo: `https://alertadelicitacao.com/reset-senha`,
-      });
-
-      if (error) {
-        setIsErro(true);
-        setMsg(traduzErroAuth(error.message));
-        return;
-      }
-
-      setIsErro(false);
-      setMsg("Link reenviado! Verifique seu e-mail.");
-      setCooldown(60);
-    } catch (err) {
-      setIsErro(true);
-      setMsg("Não foi possível reenviar agora. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
-  }
+}
 
   return (
     <div style={styles.page}>
