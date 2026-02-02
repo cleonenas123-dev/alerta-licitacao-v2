@@ -149,7 +149,7 @@ export default function LoginPage() {
         password: senha,
         options: {
           // após confirmar e-mail (se você usar), direciona pro login
-          emailRedirectTo: `${window.location.origin}/login?tab=entrar`,
+          emailRedirectTo: `${window.location.origin}/confirm`,
         },
       });
 
