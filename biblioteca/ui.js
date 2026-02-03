@@ -1,335 +1,221 @@
-// biblioteca/ui.js
-import React from "react";
+"use client";
+
+import { useEffect, useState } from "react";
 
 export const brand = {
   name: "Alerta de Licitação",
-  colors: {
-    bg: "#f3f5f8",
-    card: "#ffffff",
-    text: "#0b1020",
-    muted: "#566176",
-    border: "rgba(0,0,0,.08)",
-    primary: "#0b1020",
-    primaryText: "#ffffff",
-    okBg: "#e9fbf0",
-    okBorder: "#bfead0",
-    okText: "#155d33",
-    errBg: "#fdecec",
-    errBorder: "#f5c2c7",
-    errText: "#8a1c24",
-  },
-  radius: {
-    xl: 22,
-    lg: 18,
-    md: 14,
-    sm: 12,
-  },
-  shadow: "0 20px 60px rgba(0,0,0,0.12)",
+  tagline: "Encontre licitações do seu nicho sem perder tempo.",
 };
 
-export function GlobalStyles() {
-  // CSS global simples pra dar “cara de app” + mobile-first
+// Hook simples pra detectar mobile (sem libs)
+function useIsMobile(breakpoint = 860) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const calc = () => setIsMobile(window.innerWidth <= breakpoint);
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
+export function BottomNav({ active = "alertas" }) {
+  const isMobile = useIsMobile();
+
+  if (!isMobile) return null; // só aparece no celular
+
+  const items = [
+    { key: "alertas", href: "/alertas", label: "Alertas", icon: "📌" },
+    { key: "favoritos", href: "/favoritos", label: "Favoritos", icon: "⭐" },
+    { key: "config", href: "/config", label: "Config", icon: "⚙️" },
+    { key: "conta", href: "/conta", label: "Conta", icon: "👤" },
+  ];
+
   return (
-    <style jsx global>{`
-      :root {
-        color-scheme: light;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        height: 100%;
-      }
-      body {
-        background: ${brand.colors.bg};
-        color: ${brand.colors.text};
-      }
-      a {
-        color: inherit;
-      }
+    <>
+      {/* Espaçador para não cobrir conteúdo */}
+      <div style={{ height: 78 }} />
 
-      /* layout interno (app shell) */
-      .app-shell {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
-      .app-topbar {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: linear-gradient(90deg, #0b1020, #0a0f1d);
-        color: #fff;
-        padding: 14px 16px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-      }
-      .app-topbar-inner {
-        max-width: 1080px;
-        margin: 0 auto;
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .brand-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
-      }
-      .brand-logo {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.18);
-        flex: 0 0 auto;
-      }
-      .brand-title {
-        font-weight: 900;
-        font-size: 18px;
-        line-height: 1.1;
-      }
-      .brand-subtitle {
-        font-size: 12px;
-        opacity: 0.8;
-        margin-top: 2px;
-      }
-
-      .app-content {
-        width: 100%;
-        max-width: 1080px;
-        margin: 0 auto;
-        padding: 16px;
-        padding-bottom: 86px; /* espaço pro bottom nav no mobile */
-      }
-
-      /* Bottom nav (mobile-first) */
-      .bottom-nav {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 20;
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(10px);
-        border-top: 1px solid rgba(0, 0, 0, 0.08);
-        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-      }
-      .bottom-nav-inner {
-        max-width: 1080px;
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-      }
-      .nav-item {
-        display: grid;
-        place-items: center;
-        gap: 4px;
-        padding: 10px 8px;
-        border-radius: 14px;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        background: #fff;
-        text-decoration: none;
-        font-weight: 800;
-        font-size: 11px;
-        color: #0b1020;
-      }
-      .nav-item-active {
-        background: #0b1020;
-        color: #fff;
-        border-color: #0b1020;
-      }
-
-      /* no desktop, some com o bottom nav e mostra ações no topo */
-      @media (min-width: 900px) {
-        .app-content {
-          padding-bottom: 24px;
-        }
-        .bottom-nav {
-          display: none;
-        }
-      }
-    `}</style>
+      <nav
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 999,
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(10px)",
+          borderTop: "1px solid rgba(0,0,0,0.08)",
+          padding: "10px 10px calc(10px + env(safe-area-inset-bottom))",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 980,
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 10,
+          }}
+        >
+          {items.map((it) => {
+            const on = it.key === active;
+            return (
+              <a
+                key={it.key}
+                href={it.href}
+                style={{
+                  textDecoration: "none",
+                  borderRadius: 14,
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  padding: "10px 10px",
+                  display: "grid",
+                  placeItems: "center",
+                  gap: 4,
+                  background: on ? "#0b1020" : "#fff",
+                  color: on ? "#fff" : "#0b1020",
+                  fontWeight: 900,
+                }}
+              >
+                <div style={{ fontSize: 18, lineHeight: 1 }}>{it.icon}</div>
+                <div style={{ fontSize: 12, lineHeight: 1 }}>{it.label}</div>
+              </a>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 }
 
-export function Container({ children }) {
-  return (
-    <div
-      style={{
-        width: "min(1080px, 100%)",
-        margin: "0 auto",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+export const styles = {
+  page: {
+    minHeight: "100vh",
+    padding: 16,
+    background: "linear-gradient(180deg, #f7f7f7 0%, #efefef 100%)",
+  },
 
-export function Card({ children, style }) {
-  return (
-    <div
-      style={{
-        background: brand.colors.card,
-        borderRadius: brand.radius.xl,
-        border: `1px solid ${brand.colors.border}`,
-        boxShadow: brand.shadow,
-        overflow: "hidden",
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+  shell: {
+    maxWidth: 980,
+    margin: "0 auto",
+  },
 
-export function Panel({ children, style }) {
-  // card “leve” sem sombra pesada
-  return (
-    <div
-      style={{
-        background: brand.colors.card,
-        borderRadius: brand.radius.lg,
-        border: `1px solid ${brand.colors.border}`,
-        padding: 16,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+  topbar: {
+    background: "#fff",
+    borderRadius: 18,
+    border: "1px solid rgba(0,0,0,.06)",
+    boxShadow: "0 18px 60px rgba(0,0,0,.10)",
+    padding: 14,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+  },
 
-export function Button({
-  children,
-  variant = "primary", // primary | secondary | ghost
-  full = false,
-  disabled = false,
-  onClick,
-  type = "button",
-  style,
-}) {
-  const base = {
-    padding: "12px 16px",
-    borderRadius: brand.radius.md,
+  logo: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    background: "linear-gradient(135deg, #0b1020, #111827)",
+    boxShadow: "0 10px 26px rgba(0,0,0,0.18)",
+  },
+
+  title: { margin: 0, fontSize: 18, fontWeight: 900, lineHeight: 1.1 },
+  subtitle: { fontSize: 12, opacity: 0.75, marginTop: 2 },
+
+  // Pills (desktop)
+  pills: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  pill: (active) => ({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 12px",
+    borderRadius: 999,
+    textDecoration: "none",
     fontWeight: 900,
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.6 : 1,
-    border: "1px solid transparent",
+    border: "1px solid rgba(0,0,0,.08)",
+    background: active ? "#0b1020" : "#fff",
+    color: active ? "#fff" : "#0b1020",
+  }),
+
+  card: {
+    width: "100%",
+    background: "#fff",
+    borderRadius: 18,
+    border: "1px solid rgba(0,0,0,.06)",
+    boxShadow: "0 18px 60px rgba(0,0,0,.10)",
+    overflow: "hidden",
+  },
+  cardPad: { padding: 16 },
+
+  h2: { margin: 0, fontSize: 18, fontWeight: 900 },
+  p: { marginTop: 10, marginBottom: 0, color: "#374151", lineHeight: 1.5 },
+  note: { marginTop: 10, color: "#6b7280", fontSize: 13, lineHeight: 1.45 },
+
+  label: { fontWeight: 900, marginBottom: 6, marginTop: 10 },
+  input: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "14px 14px",
+    borderRadius: 14,
+    border: "1px solid #d7ddea",
+    outline: "none",
+    fontSize: 16,
+  },
+
+  row: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" },
+
+  btnPrimary: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    width: full ? "100%" : "auto",
-    userSelect: "none",
     textDecoration: "none",
-  };
+    background: "#0b1020",
+    color: "#fff",
+    border: "1px solid #0b1020",
+    padding: "12px 14px",
+    borderRadius: 14,
+    fontWeight: 900,
+    cursor: "pointer",
+    minWidth: 140,
+  },
+  btnGhost: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textDecoration: "none",
+    background: "#fff",
+    color: "#0b1020",
+    border: "1px solid rgba(0,0,0,.12)",
+    padding: "12px 14px",
+    borderRadius: 14,
+    fontWeight: 900,
+    cursor: "pointer",
+    minWidth: 140,
+  },
 
-  const variants = {
-    primary: {
-      background: brand.colors.primary,
-      color: brand.colors.primaryText,
-      borderColor: brand.colors.primary,
-    },
-    secondary: {
-      background: "#fff",
-      color: brand.colors.text,
-      borderColor: "rgba(0,0,0,.12)",
-    },
-    ghost: {
-      background: "transparent",
-      color: brand.colors.text,
-      borderColor: "rgba(255,255,255,.35)",
-    },
-  };
-
-  return (
-    <button
-      type={type}
-      disabled={disabled}
-      onClick={disabled ? undefined : onClick}
-      style={{ ...base, ...variants[variant], ...style }}
-    >
-      {children}
-    </button>
-  );
-}
-
-export function Badge({ children, tone = "neutral" }) {
-  const tones = {
-    neutral: { bg: "#f2f4f7", border: "rgba(0,0,0,.08)", color: "#223" },
-    ok: { bg: brand.colors.okBg, border: brand.colors.okBorder, color: brand.colors.okText },
-    err: { bg: brand.colors.errBg, border: brand.colors.errBorder, color: brand.colors.errText },
-  };
-  const t = tones[tone] || tones.neutral;
-
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "8px 10px",
-        borderRadius: 999,
-        border: `1px solid ${t.border}`,
-        background: t.bg,
-        color: t.color,
-        fontWeight: 900,
-        fontSize: 12,
-        lineHeight: 1,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-export function AppShell({ title, subtitle, right, children, active = "alertas" }) {
-  return (
-    <div className="app-shell">
-      <GlobalStyles />
-
-      <header className="app-topbar">
-        <div className="app-topbar-inner">
-          <div className="brand-row">
-            <div className="brand-logo" />
-            <div style={{ minWidth: 0 }}>
-              <div className="brand-title">{title || brand.name}</div>
-              <div className="brand-subtitle">{subtitle || "Painel do cliente"}</div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {right}
-          </div>
-        </div>
-      </header>
-
-      <main className="app-content">{children}</main>
-
-      <nav className="bottom-nav">
-        <div className="bottom-nav-inner">
-          <a className={`nav-item ${active === "alertas" ? "nav-item-active" : ""}`} href="/alertas">
-            🔔
-            <span>Alertas</span>
-          </a>
-          <a className={`nav-item ${active === "favoritos" ? "nav-item-active" : ""}`} href="/favoritos">
-            ⭐
-            <span>Favoritos</span>
-          </a>
-          <a className={`nav-item ${active === "config" ? "nav-item-active" : ""}`} href="/config">
-            ⚙️
-            <span>Config</span>
-          </a>
-          <a className={`nav-item ${active === "conta" ? "nav-item-active" : ""}`} href="/conta">
-            👤
-            <span>Conta</span>
-          </a>
-        </div>
-      </nav>
-    </div>
-  );
-}
+  badge: (type = "info") => {
+    const map = {
+      ok: { bg: "#e9fbf0", bd: "#bfead0", tx: "#155d33" },
+      warn: { bg: "#fff7ed", bd: "#fed7aa", tx: "#9a3412" },
+      info: { bg: "#eef2ff", bd: "#c7d2fe", tx: "#3730a3" },
+    };
+    const c = map[type] || map.info;
+    return {
+      background: c.bg,
+      border: `1px solid ${c.bd}`,
+      color: c.tx,
+      borderRadius: 14,
+      padding: "10px 12px",
+      fontWeight: 900,
+      fontSize: 13,
+    };
+  },
+};
