@@ -1,15 +1,13 @@
+// app/alertas/page.js
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { AppShell, Badge, Button, Card, CardBody, H1, P } from "../../biblioteca/ui";
+import { AppShell, Panel, Button, Badge } from "../../biblioteca/ui";
 
 export default function Alertas() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
-
-  // placeholder de “plano” só para vender bem (você troca depois pelo seu billing)
-  const trialDaysLeft = 10;
 
   useEffect(() => {
     async function run() {
@@ -29,151 +27,86 @@ export default function Alertas() {
     window.location.href = "/login";
   }
 
-  const saudacao = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Bom dia";
-    if (h < 18) return "Boa tarde";
-    return "Boa noite";
-  }, []);
-
-  if (loading) return <div style={{ padding: 20 }}>Carregando...</div>;
-
-  // por enquanto você ainda não tem alertas reais:
-  const temAlertas = false;
+  if (loading) {
+    return (
+      <AppShell title="Alerta de Licitação" subtitle="Carregando..." active="alertas">
+        <Panel>Carregando...</Panel>
+      </AppShell>
+    );
+  }
 
   return (
-    <AppShell active="alertas" userEmail={email}>
-      <div style={{ display: "grid", gap: 14, paddingBottom: 70 }}>
-        {/* Header do dashboard */}
-        <Card style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.08)" }}>
-          <CardBody>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap" }}>
-              <div style={{ minWidth: 240 }}>
-                <H1>{saudacao}! 👋</H1>
-                <P style={{ marginTop: 6 }}>
-                  Configure seus alertas e receba oportunidades no seu nicho.
-                </P>
+    <AppShell
+      title="Alerta de Licitação"
+      subtitle="Seu painel"
+      active="alertas"
+      right={
+        <Button variant="ghost" onClick={sair}>
+          Sair
+        </Button>
+      }
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <Badge>👤 {email}</Badge>
+        <Badge tone="ok">✅ Conta ativa</Badge>
+      </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-                  <Badge tone="ok">Teste grátis — {trialDaysLeft} dias restantes</Badge>
-                  <Badge>Notificações por e-mail</Badge>
-                </div>
-              </div>
+      <div
+        style={{
+          marginTop: 14,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 12,
+        }}
+      >
+        <Panel>
+          <div style={{ fontWeight: 900, fontSize: 16 }}>Seus alertas</div>
+          <div style={{ color: "#566176", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+            Você ainda não configurou nenhum alerta. Crie o seu primeiro e comece a receber oportunidades.
+          </div>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <Button
-                  onClick={() => alert("Próximo passo: abrir a tela de criar alerta")}
-                  style={{ minWidth: 170 }}
-                >
-                  + Criar alerta
-                </Button>
-                <Button variant="ghost" onClick={sair} style={{ minWidth: 140 }}>
-                  Sair
-                </Button>
-              </div>
+          <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button onClick={() => alert("Próximo passo: criar tela de criação de alertas 🙂")}>
+              + Criar alerta
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => alert("Próximo passo: tela de favoritos 🙂")}
+            >
+              Ver favoritos
+            </Button>
+          </div>
+        </Panel>
+
+        <Panel>
+          <div style={{ fontWeight: 900, fontSize: 16 }}>Últimos resultados</div>
+          <div style={{ color: "#566176", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+            Assim que você criar alertas, os resultados aparecem aqui com filtros e favoritos.
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <div
+              style={{
+                border: "1px dashed rgba(0,0,0,.15)",
+                borderRadius: 14,
+                padding: 14,
+                color: "#566176",
+                fontWeight: 800,
+                fontSize: 13,
+              }}
+            >
+              Nenhum resultado ainda.
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </Panel>
 
-        {/* Conteúdo principal */}
-        {!temAlertas ? (
-          <Card>
-            <CardBody>
-              <H1 style={{ fontSize: 18 }}>Crie seu primeiro alerta</H1>
-              <P style={{ marginTop: 6 }}>
-                Em 2 minutos você configura palavras-chave e estados. A partir daí,
-                o sistema te avisa quando surgir uma licitação com o seu perfil.
-              </P>
-
-              <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
-                <div style={stepRow}>
-                  <div style={stepNum}>1</div>
-                  <div>
-                    <div style={stepTitle}>Escolha seu nicho</div>
-                    <div style={stepDesc}>Ex: construção, eventos, TI, alimentação, limpeza.</div>
-                  </div>
-                </div>
-
-                <div style={stepRow}>
-                  <div style={stepNum}>2</div>
-                  <div>
-                    <div style={stepTitle}>Defina estados e palavras-chave</div>
-                    <div style={stepDesc}>Você pode usar várias palavras e variações.</div>
-                  </div>
-                </div>
-
-                <div style={stepRow}>
-                  <div style={stepNum}>3</div>
-                  <div>
-                    <div style={stepTitle}>Receba por e-mail</div>
-                    <div style={stepDesc}>E depois veja tudo organizado aqui dentro.</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-                <Button
-                  onClick={() => alert("Próximo passo: abrir a tela de criar alerta")}
-                  style={{ minWidth: 210 }}
-                >
-                  Criar meu primeiro alerta
-                </Button>
-
-                <a href="/" style={{ textDecoration: "none" }}>
-                  <Button variant="ghost" style={{ minWidth: 140 }}>
-                    Voltar ao site
-                  </Button>
-                </a>
-              </div>
-            </CardBody>
-          </Card>
-        ) : (
-          <Card>
-            <CardBody>
-              <H1 style={{ fontSize: 18 }}>Meus alertas</H1>
-              <P style={{ marginTop: 6 }}>
-                (Aqui entra sua listagem real de alertas e últimos resultados.)
-              </P>
-            </CardBody>
-          </Card>
-        )}
-
-        {/* Credibilidade / confiança */}
-        <Card style={{ borderStyle: "dashed" }}>
-          <CardBody>
-            <H1 style={{ fontSize: 16 }}>Confiança e privacidade</H1>
-            <P style={{ marginTop: 6 }}>
-              Seus dados ficam protegidos e você pode cancelar quando quiser.
-              Nosso objetivo é te fazer ganhar tempo e não perder oportunidade.
-            </P>
-          </CardBody>
-        </Card>
+        <Panel>
+          <div style={{ fontWeight: 900, fontSize: 16 }}>Dica rápida</div>
+          <div style={{ color: "#566176", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+            Quanto mais específicas as palavras-chave, melhor: “uniforme escolar”, “software gestão”, “materiais elétricos”.
+          </div>
+        </Panel>
       </div>
     </AppShell>
   );
 }
-
-const stepRow = {
-  display: "flex",
-  gap: 12,
-  alignItems: "flex-start",
-  padding: 12,
-  borderRadius: 16,
-  border: "1px solid rgba(15, 23, 42, 0.10)",
-  background: "#fff",
-};
-
-const stepNum = {
-  width: 34,
-  height: 34,
-  borderRadius: 12,
-  display: "grid",
-  placeItems: "center",
-  fontWeight: 950,
-  background: "#0b1020",
-  color: "#fff",
-  flex: "0 0 auto",
-};
-
-const stepTitle = { fontWeight: 950, color: "#0b1020" };
-const stepDesc = { marginTop: 3, fontSize: 13, color: "#667085", lineHeight: 1.4 };
