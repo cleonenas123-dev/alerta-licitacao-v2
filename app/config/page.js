@@ -1,18 +1,18 @@
-// app/config/page.js
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { AppShell, Panel, Button, Badge } from "../../biblioteca/ui";
+import { brand, styles } from "../../biblioteca/ui";
 
 export default function ConfigPage() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
 
-  // placeholders de config (sem salvar ainda)
-  const [freq, setFreq] = useState("diaria"); // imediata | diaria | semanal
-  const [canal, setCanal] = useState("email"); // email | whatsapp (futuro)
-  const [notificacoes, setNotificacoes] = useState(true);
+  // placeholders (depois você liga no Supabase)
+  const [uf, setUf] = useState("ES");
+  const [segmento, setSegmento] = useState("Materiais / Serviços");
+  const [palavras, setPalavras] = useState("licitação; pregão; contratação");
+  const [notificarEmail, setNotificarEmail] = useState(true);
 
   useEffect(() => {
     async function run() {
@@ -27,111 +27,109 @@ export default function ConfigPage() {
     run();
   }, []);
 
-  async function sair() {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
+  function salvar() {
+    // Placeholder: futuramente salva no Supabase (tabela alertas/config)
+    alert("Config salva (placeholder). Depois conectamos no Supabase.");
   }
 
-  if (loading) {
-    return (
-      <AppShell title="Alerta de Licitação" subtitle="Configurações" active="config">
-        <Panel>Carregando...</Panel>
-      </AppShell>
-    );
-  }
+  if (loading) return <div style={{ padding: 20 }}>Carregando...</div>;
 
   return (
-    <AppShell
-      title="Alerta de Licitação"
-      subtitle="Configurações"
-      active="config"
-      right={
-        <Button variant="ghost" onClick={sair}>
-          Sair
-        </Button>
-      }
-    >
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <Badge>👤 {email}</Badge>
-        <Badge>⚙️ Preferências</Badge>
-      </div>
-
-      <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-        <Panel>
-          <div style={{ fontWeight: 900, fontSize: 16 }}>Notificações</div>
-          <div style={{ color: "#566176", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
-            Ajuste como você prefere receber avisos. (Por enquanto é uma prévia visual — vamos
-            salvar isso no banco quando você quiser.)
-          </div>
-
-          <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+    <main style={styles.page}>
+      <div style={styles.shell}>
+        <div style={styles.topbar}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={styles.logo} />
             <div>
-              <div style={{ fontWeight: 900, marginBottom: 6 }}>Frequência</div>
-              <select
-                value={freq}
-                onChange={(e) => setFreq(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(0,0,0,.12)",
-                  fontWeight: 800,
-                }}
-              >
-                <option value="imediata">Imediata (recomendado)</option>
-                <option value="diaria">Diária</option>
-                <option value="semanal">Semanal</option>
-              </select>
+              <p style={styles.title}>{brand.name}</p>
+              <div style={styles.subtitle}>Configurações</div>
             </div>
-
-            <div>
-              <div style={{ fontWeight: 900, marginBottom: 6 }}>Canal</div>
-              <select
-                value={canal}
-                onChange={(e) => setCanal(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(0,0,0,.12)",
-                  fontWeight: 800,
-                }}
-              >
-                <option value="email">E-mail</option>
-                <option value="whatsapp">WhatsApp (em breve)</option>
-              </select>
-            </div>
-
-            <label
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                padding: 12,
-                borderRadius: 14,
-                border: "1px solid rgba(0,0,0,.12)",
-                fontWeight: 900,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={notificacoes}
-                onChange={(e) => setNotificacoes(e.target.checked)}
-              />
-              Ativar notificações
-            </label>
           </div>
 
-          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button onClick={() => alert("Em breve: salvar configurações no banco 🙂")}>
-              Salvar configurações
-            </Button>
-            <a href="/alertas" style={{ textDecoration: "none" }}>
-              <Button variant="secondary">Voltar</Button>
-            </a>
+          <div style={styles.pills}>
+            <a href="/alertas" style={styles.pill(false)}>📌 Alertas</a>
+            <a href="/favoritos" style={styles.pill(false)}>⭐ Favoritos</a>
+            <a href="/config" style={styles.pill(true)}>⚙️ Config</a>
+            <a href="/conta" style={styles.pill(false)}>👤 Conta</a>
           </div>
-        </Panel>
+        </div>
+
+        <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+          <div style={styles.card}>
+            <div style={styles.cardPad}>
+              <h2 style={styles.h2}>Criar / ajustar meu alerta</h2>
+              <p style={styles.p}>
+                Logado como: <b>{email}</b>
+              </p>
+
+              <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+                <div>
+                  <div style={styles.label}>UF principal</div>
+                  <input
+                    value={uf}
+                    onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))}
+                    style={styles.input}
+                    placeholder="Ex.: ES"
+                  />
+                </div>
+
+                <div>
+                  <div style={styles.label}>Segmento</div>
+                  <input
+                    value={segmento}
+                    onChange={(e) => setSegmento(e.target.value)}
+                    style={styles.input}
+                    placeholder="Ex.: TI, Construção, Saúde..."
+                  />
+                </div>
+
+                <div>
+                  <div style={styles.label}>Palavras-chave</div>
+                  <input
+                    value={palavras}
+                    onChange={(e) => setPalavras(e.target.value)}
+                    style={styles.input}
+                    placeholder="Separe por ponto e vírgula"
+                  />
+                  <div style={styles.note}>
+                    Ex.: “uniforme; camiseta; calça” ou “software; sistema; licenciamento”.
+                  </div>
+                </div>
+
+                <div style={{ ...styles.row, justifyContent: "space-between" }}>
+                  <div style={styles.badge(notificarEmail ? "ok" : "warn")}>
+                    📩 Notificar por e-mail: {notificarEmail ? "Ativado" : "Desativado"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNotificarEmail((v) => !v)}
+                    style={notificarEmail ? styles.btnPrimary : styles.btnGhost}
+                  >
+                    {notificarEmail ? "Ativado" : "Ativar"}
+                  </button>
+                </div>
+
+                <div style={{ ...styles.row, marginTop: 6 }}>
+                  <button onClick={salvar} style={styles.btnPrimary}>
+                    Salvar
+                  </button>
+                  <a href="/alertas" style={styles.btnGhost}>
+                    Voltar
+                  </a>
+                </div>
+
+                <div style={styles.note}>
+                  Próximo passo: salvar isso em uma tabela no Supabase e listar licitações filtradas no painel.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center", padding: 12, color: "#6b7280", fontSize: 12 }}>
+            {brand.name} • Config (placeholder)
+          </div>
+        </div>
       </div>
-    </AppShell>
+    </main>
   );
 }
