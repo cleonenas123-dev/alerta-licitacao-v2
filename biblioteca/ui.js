@@ -1,34 +1,168 @@
-"use client";
-
+// biblioteca/ui.js
 import React from "react";
 
-/**
- * Mini design system (inline) — 1 arquivo para padronizar o sistema inteiro.
- * Mobile-first: bottom nav no celular, topbar sempre.
- */
-
-export const theme = {
-  bg: "#f3f5f8",
-  card: "#ffffff",
-  text: "#0b1020",
-  muted: "#667085",
-  border: "rgba(15, 23, 42, 0.10)",
-  primary: "#0b1020",
-  primaryText: "#ffffff",
-  okBg: "#e9fbf0",
-  okBorder: "#bfead0",
-  okText: "#155d33",
-  errBg: "#fdecec",
-  errBorder: "#f5c2c7",
-  errText: "#8a1c24",
-  shadow: "0 20px 60px rgba(0,0,0,0.10)",
-  radius: 18,
-  radiusSm: 14,
+export const brand = {
+  name: "Alerta de Licitação",
+  colors: {
+    bg: "#f3f5f8",
+    card: "#ffffff",
+    text: "#0b1020",
+    muted: "#566176",
+    border: "rgba(0,0,0,.08)",
+    primary: "#0b1020",
+    primaryText: "#ffffff",
+    okBg: "#e9fbf0",
+    okBorder: "#bfead0",
+    okText: "#155d33",
+    errBg: "#fdecec",
+    errBorder: "#f5c2c7",
+    errText: "#8a1c24",
+  },
+  radius: {
+    xl: 22,
+    lg: 18,
+    md: 14,
+    sm: 12,
+  },
+  shadow: "0 20px 60px rgba(0,0,0,0.12)",
 };
 
-export function Container({ children, max = 1080 }) {
+export function GlobalStyles() {
+  // CSS global simples pra dar “cara de app” + mobile-first
   return (
-    <div style={{ width: "100%", maxWidth: max, margin: "0 auto", padding: 16 }}>
+    <style jsx global>{`
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: ${brand.colors.bg};
+        color: ${brand.colors.text};
+      }
+      a {
+        color: inherit;
+      }
+
+      /* layout interno (app shell) */
+      .app-shell {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .app-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: linear-gradient(90deg, #0b1020, #0a0f1d);
+        color: #fff;
+        padding: 14px 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+      }
+      .app-topbar-inner {
+        max-width: 1080px;
+        margin: 0 auto;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .brand-logo {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.18);
+        flex: 0 0 auto;
+      }
+      .brand-title {
+        font-weight: 900;
+        font-size: 18px;
+        line-height: 1.1;
+      }
+      .brand-subtitle {
+        font-size: 12px;
+        opacity: 0.8;
+        margin-top: 2px;
+      }
+
+      .app-content {
+        width: 100%;
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 16px;
+        padding-bottom: 86px; /* espaço pro bottom nav no mobile */
+      }
+
+      /* Bottom nav (mobile-first) */
+      .bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 20;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      }
+      .bottom-nav-inner {
+        max-width: 1080px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      .nav-item {
+        display: grid;
+        place-items: center;
+        gap: 4px;
+        padding: 10px 8px;
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        background: #fff;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 11px;
+        color: #0b1020;
+      }
+      .nav-item-active {
+        background: #0b1020;
+        color: #fff;
+        border-color: #0b1020;
+      }
+
+      /* no desktop, some com o bottom nav e mostra ações no topo */
+      @media (min-width: 900px) {
+        .app-content {
+          padding-bottom: 24px;
+        }
+        .bottom-nav {
+          display: none;
+        }
+      }
+    `}</style>
+  );
+}
+
+export function Container({ children }) {
+  return (
+    <div
+      style={{
+        width: "min(1080px, 100%)",
+        margin: "0 auto",
+      }}
+    >
       {children}
     </div>
   );
@@ -38,10 +172,10 @@ export function Card({ children, style }) {
   return (
     <div
       style={{
-        background: theme.card,
-        border: `1px solid ${theme.border}`,
-        borderRadius: theme.radius,
-        boxShadow: theme.shadow,
+        background: brand.colors.card,
+        borderRadius: brand.radius.xl,
+        border: `1px solid ${brand.colors.border}`,
+        boxShadow: brand.shadow,
         overflow: "hidden",
         ...style,
       }}
@@ -51,22 +185,15 @@ export function Card({ children, style }) {
   );
 }
 
-export function CardBody({ children, style }) {
-  return (
-    <div style={{ padding: 18, ...style }}>
-      {children}
-    </div>
-  );
-}
-
-export function H1({ children, style }) {
+export function Panel({ children, style }) {
+  // card “leve” sem sombra pesada
   return (
     <div
       style={{
-        fontSize: 22,
-        fontWeight: 950,
-        letterSpacing: -0.3,
-        color: theme.text,
+        background: brand.colors.card,
+        borderRadius: brand.radius.lg,
+        border: `1px solid ${brand.colors.border}`,
+        padding: 16,
         ...style,
       }}
     >
@@ -75,50 +202,56 @@ export function H1({ children, style }) {
   );
 }
 
-export function P({ children, style }) {
-  return (
-    <div style={{ color: theme.muted, fontSize: 14, lineHeight: 1.5, ...style }}>
-      {children}
-    </div>
-  );
-}
-
-export function Button({ children, variant = "primary", style, ...props }) {
+export function Button({
+  children,
+  variant = "primary", // primary | secondary | ghost
+  full = false,
+  disabled = false,
+  onClick,
+  type = "button",
+  style,
+}) {
   const base = {
-    padding: "12px 14px",
-    borderRadius: 14,
-    fontWeight: 950,
-    cursor: props.disabled ? "not-allowed" : "pointer",
+    padding: "12px 16px",
+    borderRadius: brand.radius.md,
+    fontWeight: 900,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.6 : 1,
     border: "1px solid transparent",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    lineHeight: 1,
+    width: full ? "100%" : "auto",
     userSelect: "none",
-    opacity: props.disabled ? 0.6 : 1,
+    textDecoration: "none",
   };
 
   const variants = {
     primary: {
-      background: theme.primary,
-      color: theme.primaryText,
-      borderColor: theme.primary,
+      background: brand.colors.primary,
+      color: brand.colors.primaryText,
+      borderColor: brand.colors.primary,
+    },
+    secondary: {
+      background: "#fff",
+      color: brand.colors.text,
+      borderColor: "rgba(0,0,0,.12)",
     },
     ghost: {
-      background: "#fff",
-      color: theme.text,
-      borderColor: "rgba(15, 23, 42, 0.14)",
-    },
-    danger: {
-      background: "#111827",
-      color: "#fff",
-      borderColor: "#111827",
+      background: "transparent",
+      color: brand.colors.text,
+      borderColor: "rgba(255,255,255,.35)",
     },
   };
 
   return (
-    <button style={{ ...base, ...variants[variant], ...style }} {...props}>
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      style={{ ...base, ...variants[variant], ...style }}
+    >
       {children}
     </button>
   );
@@ -126,9 +259,9 @@ export function Button({ children, variant = "primary", style, ...props }) {
 
 export function Badge({ children, tone = "neutral" }) {
   const tones = {
-    neutral: { bg: "#f2f4f7", border: "#e4e7ec", color: "#344054" },
-    ok: { bg: theme.okBg, border: theme.okBorder, color: theme.okText },
-    warn: { bg: "#fff7ed", border: "#fed7aa", color: "#9a3412" },
+    neutral: { bg: "#f2f4f7", border: "rgba(0,0,0,.08)", color: "#223" },
+    ok: { bg: brand.colors.okBg, border: brand.colors.okBorder, color: brand.colors.okText },
+    err: { bg: brand.colors.errBg, border: brand.colors.errBorder, color: brand.colors.errText },
   };
   const t = tones[tone] || tones.neutral;
 
@@ -145,6 +278,8 @@ export function Badge({ children, tone = "neutral" }) {
         color: t.color,
         fontWeight: 900,
         fontSize: 12,
+        lineHeight: 1,
+        whiteSpace: "nowrap",
       }}
     >
       {children}
@@ -152,90 +287,49 @@ export function Badge({ children, tone = "neutral" }) {
   );
 }
 
-function NavItem({ href, label, active }) {
+export function AppShell({ title, subtitle, right, children, active = "alertas" }) {
   return (
-    <a
-      href={href}
-      style={{
-        flex: 1,
-        textDecoration: "none",
-        padding: "10px 8px",
-        borderRadius: 14,
-        textAlign: "center",
-        fontWeight: 950,
-        fontSize: 12,
-        color: active ? "#fff" : theme.text,
-        background: active ? theme.primary : "transparent",
-        border: `1px solid ${active ? theme.primary : "transparent"}`,
-      }}
-    >
-      {label}
-    </a>
-  );
-}
+    <div className="app-shell">
+      <GlobalStyles />
 
-/**
- * AppShell: Topbar + conteúdo + BottomNav (mobile).
- * Passe active="alertas" / "favoritos" / "conta" etc.
- */
-export function AppShell({ active = "alertas", children, userEmail }) {
-  return (
-    <div style={{ minHeight: "100vh", background: theme.bg }}>
-      {/* Topbar */}
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "linear-gradient(90deg, #0b1020, #0a0f1d)",
-          color: "#fff",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-        }}
-      >
-        <Container max={1080}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                background: "rgba(255,255,255,0.16)",
-              }}
-            />
+      <header className="app-topbar">
+        <div className="app-topbar-inner">
+          <div className="brand-row">
+            <div className="brand-logo" />
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 950, lineHeight: 1.1 }}>
-                Alerta de Licitação
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>
-                {userEmail ? `Logado como ${userEmail}` : "Seu radar de oportunidades"}
-              </div>
+              <div className="brand-title">{title || brand.name}</div>
+              <div className="brand-subtitle">{subtitle || "Painel do cliente"}</div>
             </div>
           </div>
-        </Container>
-      </div>
 
-      {/* Conteúdo */}
-      <Container max={1080}>
-        {children}
-      </Container>
-
-      {/* Bottom nav (mobile) */}
-      <div
-        style={{
-          position: "sticky",
-          bottom: 0,
-          background: "rgba(243,245,248,0.92)",
-          backdropFilter: "blur(10px)",
-          borderTop: `1px solid ${theme.border}`,
-          padding: 10,
-        }}
-      >
-        <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", gap: 10 }}>
-          <NavItem href="/alertas" label="Alertas" active={active === "alertas"} />
-          <NavItem href="/favoritos" label="Favoritos" active={active === "favoritos"} />
-          <NavItem href="/conta" label="Conta" active={active === "conta"} />
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            {right}
+          </div>
         </div>
-      </div>
+      </header>
+
+      <main className="app-content">{children}</main>
+
+      <nav className="bottom-nav">
+        <div className="bottom-nav-inner">
+          <a className={`nav-item ${active === "alertas" ? "nav-item-active" : ""}`} href="/alertas">
+            🔔
+            <span>Alertas</span>
+          </a>
+          <a className={`nav-item ${active === "favoritos" ? "nav-item-active" : ""}`} href="/favoritos">
+            ⭐
+            <span>Favoritos</span>
+          </a>
+          <a className={`nav-item ${active === "config" ? "nav-item-active" : ""}`} href="/config">
+            ⚙️
+            <span>Config</span>
+          </a>
+          <a className={`nav-item ${active === "conta" ? "nav-item-active" : ""}`} href="/conta">
+            👤
+            <span>Conta</span>
+          </a>
+        </div>
+      </nav>
     </div>
   );
 }
