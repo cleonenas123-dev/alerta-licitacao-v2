@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { BottomNav, brand, styles } from "../../biblioteca/ui";
 import { AppShell, Panel, Button, Badge } from "../../biblioteca/ui";
 
 export default function Alertas() {
@@ -66,15 +67,16 @@ export default function Alertas() {
           </div>
 
           <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button onClick={() => alert("Próximo passo: criar tela de criação de alertas 🙂")}>
-              + Criar alerta
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => alert("Próximo passo: tela de favoritos 🙂")}
-            >
-              Ver favoritos
-            </Button>
+            <Button onClick={() => (window.location.href = "/config")}>
+  + Criar alerta
+</Button>
+
+<Button
+  variant="secondary"
+  onClick={() => (window.location.href = "/favoritos")}
+>
+  Ver favoritos
+</Button>
           </div>
         </Panel>
 
