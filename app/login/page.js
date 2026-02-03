@@ -51,7 +51,8 @@ function traduzErroAuth(msg) {
 
 export default function LoginPage() {
   const [tab, setTab] = useState("entrar"); // entrar | criar | esqueci
-
+  const [preservarMsgAoTrocarAba, setPreservarMsgAoTrocarAba] = useState(false);
+  
   // campos comuns
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -85,9 +86,13 @@ export default function LoginPage() {
 
   // limpa mensagens ao trocar aba
   useEffect(() => {
-    setMsg("");
-    setIsErro(false);
-  }, [tab]);
+  if (preservarMsgAoTrocarAba) {
+    setPreservarMsgAoTrocarAba(false);
+    return;
+  }
+  setMsg("");
+  setIsErro(false);
+}, [tab, preservarMsgAoTrocarAba]);
 
   async function entrar(e) {
     e.preventDefault();
@@ -165,6 +170,7 @@ export default function LoginPage() {
       if (jaRegistrado) {
         // manda direto pro fluxo de recuperação
         setIsErro(true);
+        setPreservarMsgAoTrocarAba(true);
         setTab("esqueci");
 
         const { error: errReset } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
@@ -194,6 +200,7 @@ export default function LoginPage() {
 
     if (jaExiste) {
       setIsErro(true);
+      setPreservarMsgAoTrocarAba(true);
       setTab("esqueci");
 
       const { error: errReset } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
@@ -261,6 +268,42 @@ async function enviarReset(e) {
   } catch (err) {
     setIsErro(true);
     setMsg("Não foi possível enviar o e-mail agora. Tente novamente.");
+  } finally {
+    setLoading(false);
+  }
+}
+ async function reenviarReset() {
+  // respeita o cooldown
+  if (!podeReenviar || loading) return;
+
+  setLoading(true);
+  setMsg("");
+  setIsErro(false);
+
+  try {
+    const emailLimpo = (email || "").trim().toLowerCase();
+    if (!emailLimpo) {
+      setIsErro(true);
+      setMsg("Informe seu e-mail para reenviar o link.");
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
+      redirectTo: `${window.location.origin}/reset-senha`,
+    });
+
+    if (error) {
+      setIsErro(true);
+      setMsg(traduzErroAuth(error.message));
+      return;
+    }
+
+    setIsErro(false);
+    setMsg("Reenviamos o link de redefinição. Verifique a caixa de entrada e o SPAM.");
+    setCooldown(60);
+  } catch (err) {
+    setIsErro(true);
+    setMsg("Não foi possível reenviar agora. Tente novamente.");
   } finally {
     setLoading(false);
   }
