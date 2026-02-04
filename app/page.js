@@ -14,37 +14,49 @@ export default function Home() {
     >
       <Card style={{ width: "min(980px, 100%)" }}>
         <div
-          style={{
-            background: "linear-gradient(90deg, #0b1020, #0a0f1d)",
-            padding: 22,
-            color: "#fff",
-          }}
-        >
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                background: "rgba(255,255,255,0.18)",
-              }}
-            />
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1 }}>
-                Alerta de Licitação
-              </div>
-              <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-                Encontre licitações do seu nicho e receba alertas no e-mail.
-              </div>
-            </div>
-          </div>
+  style={{
+    padding: 22,
+    borderRadius: 16,
+    background:
+      "radial-gradient(900px 320px at 20% 0%, rgba(109,40,217,.35), transparent 60%), radial-gradient(700px 280px at 85% 30%, rgba(59,130,246,.22), transparent 55%), linear-gradient(180deg, #ffffff 0%, #f6f3ff 100%)",
+    border: "1px solid rgba(109,40,217,.12)",
+  }}
+>
+  <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+    <div
+      style={{
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        background: "linear-gradient(135deg, rgba(109,40,217,1), rgba(37,99,235,1))",
+        boxShadow: "0 14px 40px rgba(109,40,217,.22)",
+      }}
+    />
+    <div>
+      <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1, color: "#0f172a" }}>
+        Alerta de Licitação
+      </div>
+      <div style={{ fontSize: 13, marginTop: 4, color: "#475569" }}>
+        Encontre licitações do seu nicho e receba alertas no e-mail.
+      </div>
+    </div>
+  </div>
 
-          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Badge tone="ok">⚡ Rápido e simples</Badge>
-            <Badge>🔎 Por nicho e palavras-chave</Badge>
-            <Badge>🧾 Histórico e favoritos (em breve)</Badge>
-          </div>
+  <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+    <Badge tone="ok">⚡ Rápido e simples</Badge>
+    <Badge>🔎 Por nicho e palavras-chave</Badge>
+    <Badge>🧾 Histórico e favoritos (em breve)</Badge>
+  </div>
 
+  <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
+    <a href="/login" style={{ textDecoration: "none" }}>
+      <Button>Entrar / Criar conta</Button>
+    </a>
+    <a href="/login" style={{ textDecoration: "none" }}>
+      <Button variant="secondary">Ver demonstração</Button>
+    </a>
+  </div>
+</div>
           <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <a href="/login" style={{ textDecoration: "none" }}>
               <Button>Entrar / Criar conta</Button>
