@@ -71,7 +71,7 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
               gap: 12,
             }}
           >
