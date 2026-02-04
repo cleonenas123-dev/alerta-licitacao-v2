@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { BottomNav, brand, styles, AppShell, Panel, Button, Badge } from "../../biblioteca/ui";
+import { AppShell, Panel, Button, Badge, Card } from "../../biblioteca/ui";
 
 export default function Alertas() {
   const [loading, setLoading] = useState(true);
