@@ -41,8 +41,7 @@ export const styles = {
     marginTop: 14,
     display: "grid",
    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-   @media (max-width: 900px) { gridTemplateColumns: "1fr" },
-    gap: 12,
+   gap: 12,
   },
 };
 
