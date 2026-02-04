@@ -67,7 +67,14 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={{ padding: 18 }}>
+       <div
+  style={{
+    padding: 18,
+    background: "rgba(255,255,255,.65)",
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,.06)",
+  }}
+>
           <div
             style={{
               display: "grid",
