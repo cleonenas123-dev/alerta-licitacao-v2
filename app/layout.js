@@ -21,6 +21,18 @@ export default function RootLayout({ children }) {
           MozOsxFontSmoothing: "grayscale",
         }}
       >
+ <style>{`
+    .grid-responsive {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 900px) {
+      .grid-responsive {
+        grid-template-columns: 1fr;
+      }
+    }
+  `}</style>
         {children}
       </body>
     </html>
