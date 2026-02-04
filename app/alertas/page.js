@@ -59,54 +59,42 @@ export default function Alertas() {
           gap: 12,
         }}
       >
-        <Panel>
-          <div style={{ fontWeight: 900, fontSize: 16 }}>Seus alertas</div>
-          <div style={{ color: "#566176", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
-            Você ainda não configurou nenhum alerta. Crie o seu primeiro e comece a receber oportunidades.
-          </div>
+        <Card title="Seus alertas" desc="Crie seu primeiro alerta e comece a receber oportunidades.">
+  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+    <Button onClick={() => alert("Próximo passo: criar tela de criação de alertas 🙂")}>
+      + Criar alerta
+    </Button>
+    <Button
+      variant="secondary"
+      onClick={() => alert("Próximo passo: tela de favoritos 🙂")}
+    >
+      Ver favoritos
+    </Button>
+  </div>
+</Card>
 
-          <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button onClick={() => (window.location.href = "/config")}>
-  + Criar alerta
-</Button>
+<Card title="Últimos resultados" desc="Assim que você criar alertas, os resultados aparecem aqui com filtros e favoritos.">
+  <div style={{ marginTop: 12 }}>
+    <div
+      style={{
+        border: "1px dashed rgba(0,0,0,.15)",
+        borderRadius: 14,
+        padding: 14,
+        color: "#566176",
+        fontWeight: 800,
+        fontSize: 13,
+      }}
+    >
+      Nenhum resultado ainda.
+    </div>
+  </div>
+</Card>
 
-<Button
-  variant="secondary"
-  onClick={() => (window.location.href = "/favoritos")}
->
-  Ver favoritos
-</Button>
-          </div>
-        </Panel>
-
-        <Panel>
-          <div style={{ fontWeight: 900, fontSize: 16 }}>Últimos resultados</div>
-          <div style={{ color: "#566176", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
-            Assim que você criar alertas, os resultados aparecem aqui com filtros e favoritos.
-          </div>
-
-          <div style={{ marginTop: 12 }}>
-            <div
-              style={{
-                border: "1px dashed rgba(0,0,0,.15)",
-                borderRadius: 14,
-                padding: 14,
-                color: "#566176",
-                fontWeight: 800,
-                fontSize: 13,
-              }}
-            >
-              Nenhum resultado ainda.
-            </div>
-          </div>
-        </Panel>
-
-        <Panel>
-          <div style={{ fontWeight: 900, fontSize: 16 }}>Dica rápida</div>
-          <div style={{ color: "#566176", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
-            Quanto mais específicas as palavras-chave, melhor: “uniforme escolar”, “software gestão”, “materiais elétricos”.
-          </div>
-        </Panel>
+<Card title="Dica rápida" desc="Quanto mais específicas as palavras-chave, melhor: “uniforme escolar”, “software gestão”, “materiais elétricos”.">
+  <div style={{ marginTop: 10 }}>
+    <Badge tone="ok">Sugestão</Badge>
+  </div>
+</Card>
       </div>
     </AppShell>
   );
