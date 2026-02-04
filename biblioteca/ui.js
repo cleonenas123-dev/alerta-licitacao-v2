@@ -10,31 +10,38 @@ export const brand = {
 export const styles = {
   page: {
     minHeight: "100vh",
-    background: "radial-gradient(1200px 600px at 30% 10%, rgba(109,40,217,.18), transparent 60%), linear-gradient(180deg, #f7f7fb 0%, #eef2ff 100%)",
+    background:
+  "radial-gradient(800px 400px at 20% 0%, rgba(99,102,241,.25), transparent 55%), radial-gradient(700px 380px at 90% 10%, rgba(168,85,247,.25), transparent 55%), linear-gradient(180deg, rgba(255,255,255,.85) 0%, rgba(238,242,255,.85) 100%)",
     padding: 16,
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+
   },
   shell: {
     maxWidth: 980,
     margin: "0 auto",
   },
   topbar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    padding: 14,
-    borderRadius: 18,
-    background: "rgba(255,255,255,.75)",
-    border: "1px solid rgba(15,23,42,.08)",
-    backdropFilter: "blur(10px)",
-    boxShadow: "0 18px 60px rgba(2,6,23,.08)",
-  },
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  padding: "14px 16px",
+  borderRadius: 18,
+  background:
+    "linear-gradient(180deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.58) 100%)",
+  border: "1px solid rgba(17,24,39,.08)",
+  boxShadow: "0 14px 40px rgba(17,24,39,.10)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+},
   title: { fontSize: 18, fontWeight: 950, margin: 0, color: "#0f172a" },
   subtitle: { fontSize: 13, margin: "4px 0 0", color: "#475569" },
   grid: {
     marginTop: 14,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+   @media (max-width: 900px) { gridTemplateColumns: "1fr" },
     gap: 12,
   },
 };
