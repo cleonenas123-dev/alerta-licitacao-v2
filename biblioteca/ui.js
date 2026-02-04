@@ -202,7 +202,7 @@ export function AppShell({ title, subtitle, right, children }) {
           <div>{right}</div>
         </header>
 
-        <div style={styles.grid}>{children}</div>
+        <div className="grid-responsive">{children}</div>
       </div>
     </main>
   );
