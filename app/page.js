@@ -57,17 +57,7 @@ export default function Home() {
     </a>
   </div>
 </div>
-          <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <a href="/login" style={{ textDecoration: "none" }}>
-              <Button>Entrar / Criar conta</Button>
-            </a>
-            <a href="/login" style={{ textDecoration: "none" }}>
-              <Button variant="secondary">Ver demonstração</Button>
-            </a>
-          </div>
-        </div>
-
-       <div
+    <div
   style={{
     padding: 18,
     background: "rgba(255,255,255,.65)",
@@ -78,7 +68,7 @@ export default function Home() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
               gap: 12,
             }}
           >
