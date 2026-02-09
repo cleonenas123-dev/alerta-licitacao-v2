@@ -1,705 +1,224 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
-function traduzErroAuth(msg) {
-  if (!msg) return "Ocorreu um erro. Tente novamente.";
-
-  const m = String(msg);
-
-  const mapa = new Map([
-    ["Invalid login credentials", "E-mail ou senha inválidos."],
-    [
-      "Email not confirmed",
-      "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.",
-    ],
-    [
-      "User already registered",
-      "Este e-mail já está cadastrado. Faça login ou redefina a senha.",
-    ],
-    [
-      "Password should be at least 6 characters",
-      "A senha deve ter pelo menos 6 caracteres.",
-    ],
-    ["Signup requires a valid password", "Informe uma senha válida."],
-    [
-      "Unable to validate email address: invalid format",
-      "Formato de e-mail inválido.",
-    ],
-    [
-      "Email rate limit exceeded",
-      "Muitas tentativas. Aguarde um pouco e tente novamente.",
-    ],
-    [
-      "For security purposes, you can only request this once every 60 seconds",
-      "Aguarde 60 segundos para reenviar.",
-    ],
-  ]);
-
-  // match exato
-  if (mapa.has(m)) return mapa.get(m);
-
-  // match por trecho
-  if (m.toLowerCase().includes("password"))
-    return "Senha inválida. Verifique e tente novamente.";
-  if (m.toLowerCase().includes("email"))
-    return "Verifique o e-mail informado e tente novamente.";
-
-  return "Ocorreu um erro. Tente novamente.";
-}
-
 export default function LoginPage() {
-  const [tab, setTab] = useState("entrar"); // entrar | criar | esqueci
-  const [preservarMsgAoTrocarAba, setPreservarMsgAoTrocarAba] = useState(false);
-  
-  // campos comuns
+  const router = useRouter();
+
+  const [mode, setMode] = useState("login"); // "login" | "signup"
   const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [password, setPassword] = useState("");
 
-  // criar conta
-  const [confirmarSenha, setConfirmarSenha] = useState("");
-  const [mostrarSenha2, setMostrarSenha2] = useState(false);
-
-  // mensagens
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [isErro, setIsErro] = useState(false);
+  const [msg, setMsg] = useState(null); // { type: "ok"|"err", text: string }
 
-  // sucesso cadastro (tela parabéns)
-  const [cadastroOk, setCadastroOk] = useState(false);
-  const [emailCadastro, setEmailCadastro] = useState("");
-
-  // cooldown reenviar (serve para “esqueci”)
-  const [cooldown, setCooldown] = useState(0);
-  const podeReenviar = useMemo(() => cooldown <= 0, [cooldown]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(
-      () => setCooldown((c) => (c > 0 ? c - 1 : 0)),
-      1000
-    );
-    return () => clearInterval(t);
-  }, [cooldown]);
-
-  // limpa mensagens ao trocar aba
-  useEffect(() => {
-  if (preservarMsgAoTrocarAba) {
-    setPreservarMsgAoTrocarAba(false);
-    return;
-  }
-  setMsg("");
-  setIsErro(false);
-}, [tab, preservarMsgAoTrocarAba]);
-
-  async function entrar(e) {
+  async function onLogin(e) {
     e.preventDefault();
+    setMsg(null);
     setLoading(true);
-    setMsg("");
-    setIsErro(false);
 
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: (email || "").trim().toLowerCase(),
-        password: senha,
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        setIsErro(true);
-        setMsg(traduzErroAuth(error.message));
-        return;
-      }
+    setLoading(false);
 
-      window.location.href = "/alertas";
-    } catch (err) {
-      setIsErro(true);
-      setMsg("Falha ao entrar. Tente novamente.");
-    } finally {
-      setLoading(false);
+    if (error) {
+      setMsg({ type: "err", text: "E-mail ou senha inválidos." });
+      return;
     }
+
+    // ✅ depois do login, manda pro dashboard (vamos montar depois)
+    router.push("/alertas");
   }
 
-  async function criarConta(e) {
-  e.preventDefault();
-  setLoading(true);
-  setMsg("");
-  setIsErro(false);
+  async function onSignup(e) {
+    e.preventDefault();
+    setMsg(null);
+    setLoading(true);
 
-  const emailLimpo = (email || "").trim().toLowerCase();
-
-  // validações
-  if (!emailLimpo) {
-    setIsErro(true);
-    setMsg("Informe seu e-mail.");
-    setLoading(false);
-    return;
-  }
-  if (senha.length < 6) {
-    setIsErro(true);
-    setMsg("A senha deve ter pelo menos 6 caracteres.");
-    setLoading(false);
-    return;
-  }
-  if (senha !== confirmarSenha) {
-    setIsErro(true);
-    setMsg("As senhas não conferem.");
-    setLoading(false);
-    return;
-  }
-
-  try {
     const { data, error } = await supabase.auth.signUp({
-      email: emailLimpo,
-      password: senha,
+      email,
+      password,
       options: {
-        emailRedirectTo: `${window.location.origin}/confirm`,
+        emailRedirectTo:
+          typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
       },
     });
 
-    // 1) Se vier erro explícito de "já existe"
-    if (error) {
-      const msgRaw = (error.message || "").toLowerCase();
-      const jaRegistrado =
-        msgRaw.includes("already registered") ||
-        msgRaw.includes("already exists") ||
-        msgRaw.includes("user already") ||
-        msgRaw.includes("email already");
-
-      if (jaRegistrado) {
-        // manda direto pro fluxo de recuperação
-        setIsErro(true);
-        setPreservarMsgAoTrocarAba(true);
-        setTab("esqueci");
-
-        const { error: errReset } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
-          redirectTo: `${window.location.origin}/reset-senha`,
-        });
-
-        if (errReset) {
-          setMsg(
-            "Este e-mail já está cadastrado. Não conseguimos enviar o link agora. Clique em “Enviar link” novamente."
-          );
-        } else {
-          setMsg("Este e-mail já está cadastrado. Enviamos um link para você redefinir sua senha.");
-          setCooldown(60);
-        }
-        return;
-      }
-
-      setIsErro(true);
-      setMsg(traduzErroAuth(error.message));
-      return;
-    }
-
-    // 2) Caso "silencioso" de já existir (user vem, identities vazio)
-    const user = data?.user;
-    const identities = user?.identities ?? [];
-    const jaExiste = !!user && Array.isArray(identities) && identities.length === 0;
-
-    if (jaExiste) {
-      setIsErro(true);
-      setPreservarMsgAoTrocarAba(true);
-      setTab("esqueci");
-
-      const { error: errReset } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
-        redirectTo: `${window.location.origin}/reset-senha`,
-      });
-
-      if (errReset) {
-        setMsg(
-          "Este e-mail já está cadastrado. Não conseguimos enviar o link agora. Clique em “Enviar link” novamente."
-        );
-      } else {
-        setMsg("Este e-mail já está cadastrado. Enviamos um link para você redefinir sua senha.");
-        setCooldown(60);
-      }
-      return;
-    }
-
-    // 3) Sucesso real: pedir confirmação de e-mail
-    setEmailCadastro(emailLimpo);
-    setCadastroOk(true);
-
-    setIsErro(false);
-    setMsg("Conta criada! Enviamos um e-mail de confirmação. Verifique a caixa de entrada e o SPAM.");
-
-    // limpa campos
-    setSenha("");
-    setConfirmarSenha("");
-    setMostrarSenha(false);
-    setMostrarSenha2(false);
-  } catch (err) {
-    setIsErro(true);
-    setMsg("Não foi possível criar a conta. Tente novamente.");
-  } finally {
     setLoading(false);
-  }
-}
 
-async function enviarReset(e) {
-  e.preventDefault();
-  setLoading(true);
-  setMsg("");
-  setIsErro(false);
-
-  try {
-    const emailLimpo = (email || "").trim().toLowerCase();
-    if (!emailLimpo) {
-      setIsErro(true);
-      setMsg("Informe seu e-mail para receber o link.");
+    if (error) {
+      setMsg({ type: "err", text: error.message || "Não foi possível criar a conta." });
       return;
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
-      redirectTo: `${window.location.origin}/reset-senha`,
+    setMsg({
+      type: "ok",
+      text: "Conta criada! Verifique seu e-mail para confirmar (se estiver habilitado no Supabase).",
     });
-
-    if (error) {
-      setIsErro(true);
-      setMsg(traduzErroAuth(error.message));
-      return;
-    }
-
-    setIsErro(false);
-    setMsg("Pronto! Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada e o SPAM.");
-    setCooldown(60);
-  } catch (err) {
-    setIsErro(true);
-    setMsg("Não foi possível enviar o e-mail agora. Tente novamente.");
-  } finally {
-    setLoading(false);
+    setMode("login");
   }
-}
- async function reenviarReset() {
-  // respeita o cooldown
-  if (!podeReenviar || loading) return;
-
-  setLoading(true);
-  setMsg("");
-  setIsErro(false);
-
-  try {
-    const emailLimpo = (email || "").trim().toLowerCase();
-    if (!emailLimpo) {
-      setIsErro(true);
-      setMsg("Informe seu e-mail para reenviar o link.");
-      return;
-    }
-
-    const { error } = await supabase.auth.resetPasswordForEmail(emailLimpo, {
-      redirectTo: `${window.location.origin}/reset-senha`,
-    });
-
-    if (error) {
-      setIsErro(true);
-      setMsg(traduzErroAuth(error.message));
-      return;
-    }
-
-    setIsErro(false);
-    setMsg("Reenviamos o link de redefinição. Verifique a caixa de entrada e o SPAM.");
-    setCooldown(60);
-  } catch (err) {
-    setIsErro(true);
-    setMsg("Não foi possível reenviar agora. Tente novamente.");
-  } finally {
-    setLoading(false);
-  }
-}
 
   return (
-    <div style={styles.page}>
-      {cadastroOk ? (
-        <div style={styles.cardNarrow}>
-          <div style={styles.header}>
-            <div style={styles.title}>Alerta de Licitação</div>
-            <div style={styles.subtitle}>Conta criada</div>
+    <main className="min-h-screen grid place-items-center p-4">
+      <div className="w-full max-w-[420px]">
+        {/* “moldura” tipo telefone (opcional) */}
+        <div className="rounded-[28px] bg-white shadow-xl border border-slate-200 overflow-hidden">
+          {/* Topo com gradiente + “onda” */}
+          <div className="relative px-7 pt-10 pb-16 bg-gradient-to-br from-fuchsia-600 via-violet-600 to-sky-500">
+            <div className="flex flex-col items-center text-white">
+              <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur grid place-items-center mb-3">
+                <div className="h-8 w-8 rounded-xl bg-white/80" />
+              </div>
+              <h1 className="text-2xl font-extrabold leading-tight">
+                Alerta de Licitação
+              </h1>
+              <p className="text-white/85 text-sm mt-1">
+                Acesse sua conta para receber alertas
+              </p>
+            </div>
+
+            {/* onda */}
+            <div className="absolute left-0 right-0 -bottom-1">
+              <svg viewBox="0 0 1440 140" className="w-full h-[88px]">
+                <path
+                  fill="white"
+                  d="M0,96L80,85.3C160,75,320,53,480,58.7C640,64,800,96,960,101.3C1120,107,1280,85,1360,74.7L1440,64L1440,140L1360,140C1280,140,1120,140,960,140C800,140,640,140,480,140C320,140,160,140,80,140L0,140Z"
+                />
+              </svg>
+            </div>
           </div>
 
-          <div style={{ padding: 22 }}>
-            <div style={styles.successBox}>
-              <div style={styles.thumb}>👍</div>
-              <div style={styles.successTitle}>Conta criada com sucesso!</div>
-              <div style={styles.successText}>
-                Enviamos um link de confirmação para <b>{emailCadastro}</b>.
-                <br />
-                Clique no link do e-mail para confirmar e fazer o primeiro acesso.
-              </div>
-
+          {/* Corpo */}
+          <div className="px-7 pt-6 pb-7">
+            {/* Tabs simples */}
+            <div className="flex gap-2 bg-slate-100 p-1 rounded-full w-full mb-5">
               <button
                 type="button"
-                style={styles.primaryBtn}
-                onClick={() => {
-                  setCadastroOk(false);
-                  setTab("entrar");
-                }}
+                onClick={() => setMode("login")}
+                className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                  mode === "login"
+                    ? "bg-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
-                Voltar para o login
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("signup")}
+                className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                  mode === "signup"
+                    ? "bg-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Criar conta
               </button>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div style={styles.card}>
-          <div style={styles.header}>
-            <div style={styles.brandRow}>
-              <div style={styles.logo} />
+
+            {msg?.text ? (
+              <div
+                className={`mb-4 rounded-xl px-4 py-3 text-sm border ${
+                  msg.type === "ok"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : "bg-rose-50 border-rose-200 text-rose-800"
+                }`}
+              >
+                {msg.text}
+              </div>
+            ) : null}
+
+            <form onSubmit={mode === "login" ? onLogin : onSignup} className="space-y-4">
               <div>
-                <div style={styles.title}>Alerta de Licitação</div>
-                <div style={styles.subtitle}>
-                  Entrar / Criar conta / Redefinir senha
+                <label className="text-xs font-semibold text-slate-600">
+                  E-mail
+                </label>
+                <input
+                  className="mt-2 w-full rounded-2xl bg-white border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500"
+                  placeholder="seuemail@exemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600">
+                  Senha
+                </label>
+                <input
+                  className="mt-2 w-full rounded-2xl bg-white border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-500"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type="password"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                />
+              </div>
+
+              {mode === "login" ? (
+                <div className="flex items-center justify-end">
+                  <a
+                    href="/reset-senha"
+                    className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                  >
+                    Esqueci a senha
+                  </a>
                 </div>
-              </div>
-            </div>
+              ) : null}
+
+              <button
+                disabled={loading}
+                className={`w-full rounded-2xl py-3 font-extrabold text-white shadow-md transition ${
+                  loading
+                    ? "bg-slate-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-fuchsia-600 via-violet-600 to-sky-500 hover:opacity-95"
+                }`}
+              >
+                {loading
+                  ? "Aguarde..."
+                  : mode === "login"
+                  ? "Entrar"
+                  : "Criar conta"}
+              </button>
+
+              {mode === "login" ? (
+                <p className="text-center text-sm text-slate-600">
+                  Não tem conta?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setMode("signup")}
+                    className="font-extrabold text-slate-900"
+                  >
+                    Criar agora
+                  </button>
+                </p>
+              ) : (
+                <p className="text-center text-sm text-slate-600">
+                  Já tem conta?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setMode("login")}
+                    className="font-extrabold text-slate-900"
+                  >
+                    Entrar
+                  </button>
+                </p>
+              )}
+            </form>
           </div>
-
-          <div style={styles.tabs}>
-            <button
-              type="button"
-              onClick={() => setTab("entrar")}
-              style={{
-                ...styles.tabBtn,
-                ...(tab === "entrar" ? styles.tabActive : {}),
-              }}
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("criar")}
-              style={{
-                ...styles.tabBtn,
-                ...(tab === "criar" ? styles.tabActive : {}),
-              }}
-            >
-              Criar conta
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("esqueci")}
-              style={{
-                ...styles.tabBtn,
-                ...(tab === "esqueci" ? styles.tabActive : {}),
-              }}
-            >
-              Esqueci a senha
-            </button>
-          </div>
-
-          {msg ? (
-            <div
-              style={{
-                ...styles.alert,
-                ...(isErro ? styles.alertErro : styles.alertOk),
-              }}
-            >
-              {msg}
-            </div>
-          ) : null}
-
-          {tab === "entrar" && (
-            <form onSubmit={entrar} style={styles.form}>
-              <label style={styles.label}>E-mail</label>
-              <input
-                style={styles.input}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@dominio.com"
-                autoComplete="email"
-              />
-
-              <label style={styles.label}>Senha</label>
-              <div style={styles.row}>
-                <input
-                  style={{ ...styles.input, ...styles.inputFlex }}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Sua senha"
-                  type={mostrarSenha ? "text" : "password"}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  style={styles.smallBtn}
-                  onClick={() => setMostrarSenha((v) => !v)}
-                >
-                  {mostrarSenha ? "Ocultar" : "Mostrar"}
-                </button>
-              </div>
-
-              <div style={styles.actions}>
-                <button type="submit" style={styles.primaryBtn} disabled={loading}>
-                  {loading ? "Entrando..." : "Entrar"}
-                </button>
-                <a href="/" style={styles.secondaryBtnLink}>
-                  <span style={styles.secondaryBtn}>Home</span>
-                </a>
-              </div>
-            </form>
-          )}
-
-          {tab === "criar" && (
-            <form onSubmit={criarConta} style={styles.form}>
-              <label style={styles.label}>E-mail</label>
-              <input
-                style={styles.input}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@dominio.com"
-                autoComplete="email"
-              />
-
-              <label style={styles.label}>Senha</label>
-              <div style={styles.row}>
-                <input
-                  style={{ ...styles.input, ...styles.inputFlex }}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Crie uma senha"
-                  type={mostrarSenha ? "text" : "password"}
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  style={styles.smallBtn}
-                  onClick={() => setMostrarSenha((v) => !v)}
-                >
-                  {mostrarSenha ? "Ocultar" : "Mostrar"}
-                </button>
-              </div>
-
-              <label style={styles.label}>Confirmar senha</label>
-              <div style={styles.row}>
-                <input
-                  style={{ ...styles.input, ...styles.inputFlex }}
-                  value={confirmarSenha}
-                  onChange={(e) => setConfirmarSenha(e.target.value)}
-                  placeholder="Repita a senha"
-                  type={mostrarSenha2 ? "text" : "password"}
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  style={styles.smallBtn}
-                  onClick={() => setMostrarSenha2((v) => !v)}
-                >
-                  {mostrarSenha2 ? "Ocultar" : "Mostrar"}
-                </button>
-              </div>
-
-              <div style={styles.actions}>
-                <button type="submit" style={styles.primaryBtn} disabled={loading}>
-                  {loading ? "Criando..." : "Criar conta"}
-                </button>
-                <a href="/" style={styles.secondaryBtnLink}>
-                  <span style={styles.secondaryBtn}>Home</span>
-                </a>
-              </div>
-            </form>
-          )}
-
-          {tab === "esqueci" && (
-            <form onSubmit={enviarReset} style={styles.form}>
-              <label style={styles.label}>E-mail</label>
-              <input
-                style={styles.input}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Digite seu e-mail"
-                autoComplete="email"
-              />
-              <div style={styles.hint}>
-                Enviaremos um link para você criar uma nova senha.
-              </div>
-
-              <div style={styles.actions}>
-                <button type="submit" style={styles.primaryBtn} disabled={loading}>
-                  {loading ? "Enviando..." : "Enviar link"}
-                </button>
-
-                <button
-                  type="button"
-                  style={{
-                    ...styles.secondaryBtn,
-                    ...(podeReenviar ? {} : styles.disabledBtn),
-                  }}
-                  onClick={reenviarReset}
-                  disabled={!podeReenviar || loading}
-                  title={!podeReenviar ? `Aguarde ${cooldown}s` : "Reenviar e-mail"}
-                >
-                  {podeReenviar ? "Reenviar e-mail" : `Reenviar em ${cooldown}s`}
-                </button>
-
-                <a href="/" style={styles.secondaryBtnLink}>
-                  <span style={styles.secondaryBtn}>Home</span>
-                </a>
-              </div>
-            </form>
-          )}
         </div>
-      )}
-    </div>
+
+        <p className="text-center text-xs text-slate-500 mt-4">
+          Ao continuar, você concorda com os termos de uso.
+        </p>
+      </div>
+    </main>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    background: "#f3f5f8",
-  },
-  card: {
-    width: "min(920px, 100%)",
-    borderRadius: 22,
-    background: "#fff",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
-    overflow: "hidden",
-  },
-  cardNarrow: {
-    width: "min(720px, 100%)",
-    borderRadius: 22,
-    background: "#fff",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
-    overflow: "hidden",
-  },
-  header: {
-    background: "linear-gradient(90deg, #0b1020, #0a0f1d)",
-    padding: "22px 22px",
-    color: "#fff",
-  },
-  brandRow: { display: "flex", gap: 14, alignItems: "center" },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    background: "rgba(255,255,255,0.16)",
-  },
-  title: { fontSize: 28, fontWeight: 800, lineHeight: 1.1 },
-  subtitle: { fontSize: 13, opacity: 0.8, marginTop: 2 },
-
-  tabs: {
-    display: "flex",
-    gap: 10,
-    padding: 18,
-    background: "#f7f8fa",
-  },
-  tabBtn: {
-    flex: 1,
-    border: "1px solid #e4e7ee",
-    background: "#fff",
-    padding: "12px 14px",
-    borderRadius: 999,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  tabActive: {
-    background: "#0b1020",
-    color: "#fff",
-    border: "1px solid #0b1020",
-  },
-
-  alert: {
-    margin: "14px 18px 0 18px",
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid transparent",
-    fontWeight: 600,
-  },
-  alertOk: { background: "#e9fbf0", borderColor: "#bfead0", color: "#155d33" },
-  alertErro: { background: "#fdecec", borderColor: "#f5c2c7", color: "#8a1c24" },
-
-  form: { padding: 18, paddingTop: 16 },
-  label: { display: "block", fontWeight: 800, margin: "12px 0 8px 0" },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "14px 14px",
-    borderRadius: 14,
-    border: "1px solid #d7ddea",
-    outline: "none",
-    fontSize: 16,
-    minWidth: 0,
-  },
-  row: { display: "flex", gap: 10, alignItems: "center", minWidth: 0 },
-  inputFlex: { flex: 1, minWidth: 0 },
-
-  smallBtn: {
-    padding: "14px 16px",
-    borderRadius: 14,
-    border: "1px solid #d7ddea",
-    background: "#fff",
-    fontWeight: 800,
-    cursor: "pointer",
-    minWidth: 110,
-  },
-  hint: { marginTop: 8, fontSize: 13, opacity: 0.75 },
-
-  actions: {
-    display: "flex",
-    gap: 12,
-    marginTop: 18,
-    flexWrap: "wrap",
-    alignItems: "center",
-  },
-  primaryBtn: {
-    background: "#0b1020",
-    color: "#fff",
-    border: "1px solid #0b1020",
-    padding: "13px 18px",
-    borderRadius: 14,
-    fontWeight: 900,
-    cursor: "pointer",
-    minWidth: 140,
-
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    lineHeight: 1,
-  },
-
-  secondaryBtn: {
-    background: "#fff",
-    color: "#0b1020",
-    border: "1px solid #d7ddea",
-    padding: "13px 18px",
-    borderRadius: 14,
-    fontWeight: 900,
-    cursor: "pointer",
-    minWidth: 160,
-    textAlign: "center",
-
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    lineHeight: 1,
-  },
-  secondaryBtnLink: { textDecoration: "none" },
-  disabledBtn: { opacity: 0.55, cursor: "not-allowed" },
-
-  successBox: {
-    background: "#e9fbf0",
-    border: "1px solid #bfead0",
-    borderRadius: 18,
-    padding: 22,
-    textAlign: "center",
-  },
-  thumb: { fontSize: 44, marginBottom: 10, lineHeight: 1 },
-  successTitle: {
-    fontSize: 22,
-    fontWeight: 900,
-    marginBottom: 6,
-    color: "#155d33",
-  },
-  successText: {
-    fontSize: 14,
-    lineHeight: 1.5,
-    color: "#155d33",
-    marginBottom: 16,
-  },
-};
